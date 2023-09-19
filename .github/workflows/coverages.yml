@@ -22,7 +22,7 @@ jobs:
       - name: Recreate coverage file
         run: |
           poetry install
-          coverage --branch -m pytest
+          coverage run --branch -m pytest
           coverage xml -o coverage/coverage.xml
 
       - name: Commit new coverage
