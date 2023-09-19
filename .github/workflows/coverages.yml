@@ -17,7 +17,7 @@ jobs:
       - name: Install Poetry
         run: |
           curl -sSL https://install.python-poetry.org | python -
-          poetry shell
+          poetry config virtualenvs.create false
 
       - name: Recreate coverage file
         run: |
