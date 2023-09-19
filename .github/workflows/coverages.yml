@@ -25,13 +25,8 @@ jobs:
           coverage run --branch -m pytest
           coverage xml -o coverage/coverage.xml
 
-      - name: Commit new coverage
-        run: |
-          git config --global user.email "no-reply@github.com"
-          git config --global user.name "GitHub Actions"
-          git add coverage/coverage.xml
-          git commit -m "[Github] Update Coverage"
-          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
-          git push
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Get Cover
+        uses: orgoro/coverage@v3.1
+        with:
+          coverageFile: coverage/coverage.xml
+          token: ${{ secrets.GITHUB_TOKEN }}
