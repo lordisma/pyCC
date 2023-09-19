@@ -8,13 +8,23 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-  
+
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.11
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python -
+          source $HOME/.poetry/env
+
       - name: Recreate coverage file
         run: |
           poetry install
           poetry run coverage --branch -m pytest
           poetry run coverage xml -o coverage/coverage.xml
-  
+
       - name: Commit new coverage
         run: |
           git config --global user.email "no-reply@github.com"
