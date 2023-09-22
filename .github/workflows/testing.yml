@@ -1,4 +1,6 @@
+name: "Testing"
 on:
+  workflow_dispatch:
   pull_request:
         branches:
             - master
@@ -33,4 +35,4 @@ jobs:
           files: ./coverage.xml
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-          
+
