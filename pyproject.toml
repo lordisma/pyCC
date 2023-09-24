@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "clustlib"
+version = "0.1.0"
+description = ""
+authors = ["Ismael Marin <ismitae.imm@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+pytest = "^7.4.2"
+pylint = "^2.17.5"
+coverage = "^7.3.1"
+mkdocs = "^1.5.3"
+mkdocs-material = "^9.4.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
