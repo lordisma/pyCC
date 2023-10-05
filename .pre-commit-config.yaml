@@ -12,11 +12,13 @@ repos:
       rev: "6.1.0"
       hooks:
         - id: flake8
+          entry: poetry run flake8 --ignore=F401,E501
     - repo: local
       hooks:
         - id: pylint
           name: pylint
-          entry: poetry run pylint clustlib/
+          entry: poetry run pylint --max-line-length=120 --max-args=20 clustlib/
+
           language: system
           always_run: true
           pass_filenames: false
