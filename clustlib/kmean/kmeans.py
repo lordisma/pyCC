@@ -17,9 +17,16 @@ ________
 
 import numpy as np
 from .. import BaseEstimator
+from sklearn.cluster._k_means_elkan import init_bounds_dense
+from sklearn.cluster import KMeans
+from typing import Sequence
+
+from ..constraints.matrix import ConstraintMatrix
+
+import rsinner as rs
 
 
-class KMeans(BaseEstimator):
+class COPMeans(BaseEstimator):
     """KMeans estimator
     KMeans estimator implementation.
 
@@ -40,6 +47,10 @@ class KMeans(BaseEstimator):
         Custom initial centroids to be used in the initialization. Only used if init='custom'.
     """
 
+    __lower_bounds: np.ndarray
+    __upper_bounds: np.ndarray
+    __delta_centroid: np.ndarray
+
     def __init__(
         self,
         n_clusters=8,
@@ -47,6 +58,7 @@ class KMeans(BaseEstimator):
         max_iter=300,
         tol=1e-4,
         custom_initial_centroids=None,
+        constraints: Sequence[Sequence] = None,
     ):
         self.n_clusters = n_clusters
         self.init = init
@@ -54,6 +66,7 @@ class KMeans(BaseEstimator):
         self.tol = tol
         self.custom_initial_centroids = custom_initial_centroids
         self.centroids = None
+        self.constraints = ConstraintMatrix(constraints)
 
     def fit(self, dataset):
         """Compute k-means clustering.
@@ -65,16 +78,196 @@ class KMeans(BaseEstimator):
         """
         # Initialize centroids
         if self.init == "random":
-            self.centroids = self._init_random(dataset)
+            self.centroids = self.__init_random(dataset)
         elif self.init == "custom":
-            self.centroids = self._init_custom()
+            self.centroids = self.__init_custom()
         else:
             raise ValueError(f"Invalid init method: '{self.init}'")
+
+        self.__delta_centroid = np.zeros(self.centroids.shape)
+
+        # Get lower and upper bounds for each instance
+        self.__lower_bounds, self.__upper_bounds = self.__init_bounds(dataset)
+
+        for i in range(self.max_iter):
+            print(f"Iteration: {i}")
+
+            # Assign instances to clusters
+            self.__assign_instances(dataset)
+
+            # Update centroids
+            self.__update_centroids(dataset)
+
+            # Check convergence
+            if self.__check_convergence():
+                break
 
         # Initialize clusters
         return self.centroids
 
-    def _init_random(self, dataset):
+    def __check_convergence(self):
+        """Check convergence of the algorithm.
+
+        Returns
+        _______
+        bool
+            True if the algorithm has converged, False otherwise.
+        """
+
+        # Check convergence
+        return np.all(np.linalg.norm(self.__delta_centroid, axis=1) <= self.tol)
+
+    def __assign_instances(self, dataset):
+        """Assign instances to clusters.
+
+        Parameters
+        __________
+        X: numpy.ndarray
+            Training instances to cluster.
+        """
+        # Assign each instance to the closest centroid
+        for instance_index, _ in enumerate(dataset):
+            # Get the closest centroid to the instance
+            print(f"Instance: {instance_index}")
+            current_class = self.__get_valid_centroid(instance_index)
+
+            # Update upper bound for the instance
+            self.__upper_bounds[instance_index] = np.min(
+                self.__lower_bounds[instance_index, current_class]
+            )
+
+    def __get_valid_centroid(self, index):
+        """Check the graph of constrains and return a list of valid centroids.
+
+        # Assumtion: There is a Constraints Matrix specifing the valid centroids for each instance.
+
+        Parameters
+        __________
+        index: int
+            Index of the instance to check.
+        """
+        cl_constraints = list(
+            self.constraints.get_cl_constraints(index)
+        )  # Get a list of indexes of CL constraints
+        if len(cl_constraints) != 0:
+            cl_prototypes = list(
+                map(int, set(self.__current_class[cl_constraints]))
+            )  # Get a set of the current classes of the constraints
+            self.__lower_bounds[
+                index, cl_prototypes
+            ] = np.inf  # Set the lower bounds of the invalid centroids to infinity
+
+        ml_constraints = list(
+            self.constraints.get_ml_constraints(index)
+        )  # Get a list of indexes of ML constraints
+        if len(ml_constraints) != 0:
+            ml_prototypes = list(
+                map(int, set(self.__current_class[ml_constraints]))
+            )  # Get a set of the current classes of the constraints
+            return self.__lower_bounds[
+                index, ml_prototypes
+            ].argmin()  # Return the index of the closest centroid
+        else:
+            return self.__lower_bounds[index].argmin()
+
+    def __update_centroids(self, dataset):
+        """Update centroids.
+
+        Parameters
+        __________
+        X: numpy.ndarray
+            Training instances to cluster.
+        """
+        # Update centroids
+        for centroid_index, _ in enumerate(self.centroids):
+            # Get instances belonging to the current cluster
+            instances = dataset[self.__current_class == centroid_index]
+
+            # Save the old value of the centroid to calculate the delta
+            old_centroid = self.centroids[centroid_index]
+
+            # Update centroid
+            self.centroids[centroid_index] = instances.mean(axis=0)
+
+            # Calculate the delta
+            print("Let's me see if this is the problem")
+            print(
+                f"type: {type(self.centroids)}, shape: {self.centroids.shape}, Data: {self.centroids[centroid_index]}"
+            )
+            print(
+                f"type: {type(old_centroid)}, shape: {old_centroid.shape}, Data: {old_centroid}"
+            )
+            print(
+                f"type: {type(self.__delta_centroid)}, shape: {self.__delta_centroid.shape}, Data: {self.__delta_centroid[centroid_index]}"
+            )
+            self.__delta_centroid[centroid_index] = (
+                self.centroids[centroid_index] - old_centroid
+            )
+
+        # Update lower and upper bounds
+        self.__update_bounds(dataset)
+
+    def __update_bounds(self, dataset):
+        """Update lower and upper bounds for each instance.
+
+        Parameters
+        __________
+        X: numpy.ndarray
+            Training instances to cluster.
+        """
+
+        for instance_index, _ in enumerate(dataset):
+            self.__lower_bounds[instance_index, :] -= np.linalg.norm(
+                self.__delta_centroid, axis=1
+            )  # May be wrong
+            print(f"Lower bounds: {self.__lower_bounds[instance_index]}")
+
+            print(f"Instance index: {instance_index}")
+            print(f"Upper bounds: {self.__upper_bounds[instance_index]}")
+            print(f"Curent class: {self.__current_class[instance_index]}")
+            print(
+                f"Delta centroid: {self.__delta_centroid[self.__current_class[instance_index]]}"
+            )
+            self.__upper_bounds[instance_index] += np.linalg.norm(
+                self.__delta_centroid[self.__current_class[instance_index]]
+            )
+
+    def __init_bounds(self, dataset):
+        """Initialize lower and upper bounds for each instance.
+
+        Parameters
+        __________
+        X: numpy.ndarray
+            Training instances to cluster.
+
+        Returns
+        _______
+        numpy.ndarray
+            Lower bounds for each instance.
+        numpy.ndarray
+            Upper bounds for each instance.
+        """
+        lower_bounds = np.zeros((dataset.shape[0], self.n_clusters))
+        upper_bounds = np.zeros((dataset.shape[0]))
+
+        self.__current_class = np.zeros((dataset.shape[0]), dtype=int)
+
+        for instance_index, instance in enumerate(dataset):
+            for centroid_index, centroid in enumerate(self.centroids):
+                lower_bounds[instance_index, centroid_index] = np.linalg.norm(
+                    instance - centroid
+                )
+
+            # Get the closest centroid to the instance
+            self.__current_class[instance_index] = lower_bounds[
+                instance_index, :
+            ].argmin()
+
+            upper_bounds[instance_index] = np.min(lower_bounds[instance_index, :])
+
+        return lower_bounds, upper_bounds
+
+    def __init_random(self, dataset):
         """Initialize centroids randomly.
 
         Parameters
@@ -91,9 +284,13 @@ class KMeans(BaseEstimator):
         random_indices = np.random.choice(
             dataset.shape[0], self.n_clusters, replace=False
         )
-        return dataset[random_indices, :]
 
-    def _init_custom(self):
+        print(f"Random indices: {random_indices}")
+        print(f"Dataset: {dataset.shape}")
+
+        return dataset[random_indices]
+
+    def __init_custom(self):
         """Initialize centroids using custom_initial_centroids.
 
         Returns
@@ -101,4 +298,21 @@ class KMeans(BaseEstimator):
         numpy.ndarray
             Set of centroids
         """
+        # FIXME: Custom should be a funcition that allow
         return self.custom_initial_centroids
+
+    def fit_predict(self, dataset):
+        """Compute cluster centers and predict cluster index for each sample.
+
+        Parameters
+        __________
+        X: numpy.ndarray
+            Training instances to cluster.
+
+        Returns
+        _______
+        numpy.ndarray
+            Index of the cluster each sample belongs to.
+        """
+        self.fit(dataset)
+        return self.predict(dataset)
