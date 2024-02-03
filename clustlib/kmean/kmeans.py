@@ -90,8 +90,6 @@ class COPMeans(BaseEstimator):
         self.__lower_bounds, self.__upper_bounds = self.__init_bounds(dataset)
 
         for i in range(self.max_iter):
-            print(f"Iteration: {i}")
-
             # Assign instances to clusters
             self.__assign_instances(dataset)
 
@@ -128,7 +126,6 @@ class COPMeans(BaseEstimator):
         # Assign each instance to the closest centroid
         for instance_index, _ in enumerate(dataset):
             # Get the closest centroid to the instance
-            print(f"Instance: {instance_index}")
             current_class = self.__get_valid_centroid(instance_index)
 
             # Update upper bound for the instance
@@ -190,16 +187,6 @@ class COPMeans(BaseEstimator):
             self.centroids[centroid_index] = instances.mean(axis=0)
 
             # Calculate the delta
-            print("Let's me see if this is the problem")
-            print(
-                f"type: {type(self.centroids)}, shape: {self.centroids.shape}, Data: {self.centroids[centroid_index]}"
-            )
-            print(
-                f"type: {type(old_centroid)}, shape: {old_centroid.shape}, Data: {old_centroid}"
-            )
-            print(
-                f"type: {type(self.__delta_centroid)}, shape: {self.__delta_centroid.shape}, Data: {self.__delta_centroid[centroid_index]}"
-            )
             self.__delta_centroid[centroid_index] = (
                 self.centroids[centroid_index] - old_centroid
             )
@@ -220,14 +207,6 @@ class COPMeans(BaseEstimator):
             self.__lower_bounds[instance_index, :] -= np.linalg.norm(
                 self.__delta_centroid, axis=1
             )  # May be wrong
-            print(f"Lower bounds: {self.__lower_bounds[instance_index]}")
-
-            print(f"Instance index: {instance_index}")
-            print(f"Upper bounds: {self.__upper_bounds[instance_index]}")
-            print(f"Curent class: {self.__current_class[instance_index]}")
-            print(
-                f"Delta centroid: {self.__delta_centroid[self.__current_class[instance_index]]}"
-            )
             self.__upper_bounds[instance_index] += np.linalg.norm(
                 self.__delta_centroid[self.__current_class[instance_index]]
             )
@@ -284,9 +263,6 @@ class COPMeans(BaseEstimator):
         random_indices = np.random.choice(
             dataset.shape[0], self.n_clusters, replace=False
         )
-
-        print(f"Random indices: {random_indices}")
-        print(f"Dataset: {dataset.shape}")
 
         return dataset[random_indices]
 
