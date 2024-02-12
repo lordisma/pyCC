@@ -17,16 +17,17 @@ ________
 
 import numpy as np
 from .. import BaseEstimator
-from sklearn.cluster._k_means_elkan import init_bounds_dense
 from sklearn.cluster import KMeans
 from typing import Sequence
 
 from ..constraints.matrix import ConstraintMatrix
 
-import rsinner as rs
 
-
-class COPMeans(BaseEstimator):
+# FIXME: Fix the conjunto vacio, CL 3 instancias y dos clusters
+# FIXME: Esto es el Soft-COP-KMeans
+# FIXME: Devuelve un stimator, ajustarse a sklearn https://scikit-learn.org/stable/modules/generated/sklearn.cluster.KMeans.html#sklearn.cluster.KMeans.fit
+# TODO: Crear una clase base
+class BaseKMeans(BaseEstimator):
     """KMeans estimator
     KMeans estimator implementation.
 
@@ -50,6 +51,9 @@ class COPMeans(BaseEstimator):
     __lower_bounds: np.ndarray
     __upper_bounds: np.ndarray
     __delta_centroid: np.ndarray
+    _labels: np.ndarray
+    __cl_cluster: np.ndarray
+    __ml_cluster: np.ndarray
 
     def __init__(
         self,
@@ -84,17 +88,28 @@ class COPMeans(BaseEstimator):
         else:
             raise ValueError(f"Invalid init method: '{self.init}'")
 
+        # FIXME: Calcular diametro del dataset (sive tanto para la normaizacion como sin ella)
+
         self.__delta_centroid = np.zeros(self.centroids.shape)
 
         # Get lower and upper bounds for each instance
         self.__lower_bounds, self.__upper_bounds = self.__init_bounds(dataset)
 
+        # Generate the clusters and constraints matrix
+        self.__generate_clusters_constraints(dataset)
+
         for i in range(self.max_iter):
             # Assign instances to clusters
             self.__assign_instances(dataset)
-
-            # Update centroids
-            self.__update_centroids(dataset)
+            try:
+                # Update centroids
+                self.__update_centroids(dataset)
+            except ValueError as e:
+                print("ERROR: Unsustainable solution found")
+                self._labels = np.zeros(len(dataset))
+                return self.centroids
+            except Exception as e:
+                raise e
 
             # Check convergence
             if self.__check_convergence():
@@ -102,6 +117,28 @@ class COPMeans(BaseEstimator):
 
         # Initialize clusters
         return self.centroids
+
+    def __generate_clusters_constraints(self, dataset):
+        """Generate clusters constraints.
+
+        TODO: Fix the docstring
+        Parameters
+        __________
+        dataset: numpy.ndarray
+            Training instances to cluster.
+        """
+        for index in range(len(dataset)):
+            cl_constraints = list(self.constraints.get_cl_constraints(index))
+            if len(cl_constraints) != 0:
+                cl_prototypes = self.__get_centroids_from_constraints(cl_constraints)
+                self.__check_invalid_set(cl_prototypes)
+                self.__cl_cluster[index] = cl_prototypes
+
+            ml_constraints = list(self.constraints.get_ml_constraints(index))
+            if len(ml_constraints) != 0:
+                self.__ml_cluster[index] = self.__get_centroids_from_constraints(
+                    ml_constraints
+                )
 
     def __check_convergence(self):
         """Check convergence of the algorithm.
@@ -111,9 +148,25 @@ class COPMeans(BaseEstimator):
         bool
             True if the algorithm has converged, False otherwise.
         """
-
         # Check convergence
         return np.all(np.linalg.norm(self.__delta_centroid, axis=1) <= self.tol)
+
+    def __check_invalid_set(self, cl_centroids):
+        """Check if the set of centroids is invalid. And raise an exception if it is
+
+        Parameters
+        __________
+        cl_centroids: numpy.ndarray
+            Centroids of the current class.
+
+        Returns
+        _______
+        bool
+            True if the set of centroids is invalid, False otherwise.
+        """
+        # Check if the set of centroids is invalid
+        if len(cl_centroids) == self.n_clusters:
+            raise ValueError("Invalid set of centroids")
 
     def __assign_instances(self, dataset):
         """Assign instances to clusters.
@@ -126,14 +179,48 @@ class COPMeans(BaseEstimator):
         # Assign each instance to the closest centroid
         for instance_index, _ in enumerate(dataset):
             # Get the closest centroid to the instance
-            current_class = self.__get_valid_centroid(instance_index)
+            current_class = self.__get_current_class(instance_index)
 
             # Update upper bound for the instance
             self.__upper_bounds[instance_index] = np.min(
                 self.__lower_bounds[instance_index, current_class]
             )
 
-    def __get_valid_centroid(self, index):
+    def __get_current_class(self, index):
+        """Get current class of a set of instances, this will be used to
+        convert the list of instances into a list of centroids.
+
+        Parameters
+        __________
+        index: int
+            Index of the instance to check.
+
+        Returns
+        _______
+        numpy.ndarray
+            Centroids from constraints.
+        """
+        # Get current class of the instance
+        return self.__get_valid_centroids(index).argmin()
+
+    def __get_centroids_from_constraints(self, constraints):
+        """Get current class of a set of instances, this will be used to
+        convert the list of instances into a list of centroids.
+
+        Parameters
+        __________
+        constraints: list
+            List of constraints.
+
+        Returns
+        _______
+        numpy.ndarray
+            Centroids from constraints.
+        """
+        # Get centroids from constraints
+        return list(map(int, set(self._labels[constraints])))
+
+    def __get_valid_centroids(self, index):
         """Check the graph of constrains and return a list of valid centroids.
 
         # Assumtion: There is a Constraints Matrix specifing the valid centroids for each instance.
@@ -142,30 +229,18 @@ class COPMeans(BaseEstimator):
         __________
         index: int
             Index of the instance to check.
-        """
-        cl_constraints = list(
-            self.constraints.get_cl_constraints(index)
-        )  # Get a list of indexes of CL constraints
-        if len(cl_constraints) != 0:
-            cl_prototypes = list(
-                map(int, set(self.__current_class[cl_constraints]))
-            )  # Get a set of the current classes of the constraints
-            self.__lower_bounds[
-                index, cl_prototypes
-            ] = np.inf  # Set the lower bounds of the invalid centroids to infinity
 
-        ml_constraints = list(
-            self.constraints.get_ml_constraints(index)
-        )  # Get a list of indexes of ML constraints
-        if len(ml_constraints) != 0:
-            ml_prototypes = list(
-                map(int, set(self.__current_class[ml_constraints]))
-            )  # Get a set of the current classes of the constraints
-            return self.__lower_bounds[
-                index, ml_prototypes
-            ].argmin()  # Return the index of the closest centroid
+        Returns
+        _______
+        numpy.ndarray
+            List of valid centroids.
+        """
+        ml_prototypes = self.__ml_cluster[index]
+
+        if len(ml_prototypes) != 0:
+            return self.__lower_bounds[index, ml_prototypes]
         else:
-            return self.__lower_bounds[index].argmin()
+            return self.__lower_bounds[index]
 
     def __update_centroids(self, dataset):
         """Update centroids.
@@ -178,7 +253,7 @@ class COPMeans(BaseEstimator):
         # Update centroids
         for centroid_index, _ in enumerate(self.centroids):
             # Get instances belonging to the current cluster
-            instances = dataset[self.__current_class == centroid_index]
+            instances = dataset[self._labels == centroid_index]
 
             # Save the old value of the centroid to calculate the delta
             old_centroid = self.centroids[centroid_index]
@@ -208,7 +283,7 @@ class COPMeans(BaseEstimator):
                 self.__delta_centroid, axis=1
             )  # May be wrong
             self.__upper_bounds[instance_index] += np.linalg.norm(
-                self.__delta_centroid[self.__current_class[instance_index]]
+                self.__delta_centroid[self._labels[instance_index]]
             )
 
     def __init_bounds(self, dataset):
@@ -229,7 +304,7 @@ class COPMeans(BaseEstimator):
         lower_bounds = np.zeros((dataset.shape[0], self.n_clusters))
         upper_bounds = np.zeros((dataset.shape[0]))
 
-        self.__current_class = np.zeros((dataset.shape[0]), dtype=int)
+        self._labels = np.zeros((dataset.shape[0]), dtype=int)
 
         for instance_index, instance in enumerate(dataset):
             for centroid_index, centroid in enumerate(self.centroids):
@@ -238,9 +313,7 @@ class COPMeans(BaseEstimator):
                 )
 
             # Get the closest centroid to the instance
-            self.__current_class[instance_index] = lower_bounds[
-                instance_index, :
-            ].argmin()
+            self._labels[instance_index] = lower_bounds[instance_index, :].argmin()
 
             upper_bounds[instance_index] = np.min(lower_bounds[instance_index, :])
 
@@ -276,19 +349,3 @@ class COPMeans(BaseEstimator):
         """
         # FIXME: Custom should be a funcition that allow
         return self.custom_initial_centroids
-
-    def fit_predict(self, dataset):
-        """Compute cluster centers and predict cluster index for each sample.
-
-        Parameters
-        __________
-        X: numpy.ndarray
-            Training instances to cluster.
-
-        Returns
-        _______
-        numpy.ndarray
-            Index of the cluster each sample belongs to.
-        """
-        self.fit(dataset)
-        return self.predict(dataset)

@@ -9,7 +9,7 @@ scikit-learn's BaseEstimator in order to facilitate the integration with the lib
 """
 
 from abc import ABC
-from sklearn.base import BaseEstimator as SklearnBaseEstimator
+from sklearn.base import ClusterMixin as SklearnBaseEstimator
 
 
 class BaseEstimator(ABC, SklearnBaseEstimator):
