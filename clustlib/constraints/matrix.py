@@ -84,6 +84,8 @@ class ConstraintMatrix:
         is ML with B, and B is ML with C, then A is ML with C. This method will complete the matrix and raise an
         exception if a contradiction is found.
 
+        TODO: Refactor this method to be more readable and understandable
+
         Raises
         ------
         ValueError
@@ -109,6 +111,7 @@ class ConstraintMatrix:
                     result[i].add(k)
                     dfs(ml, cl, visited, k, result)
 
+        # 
         for i in range(shape[0]):
             if not i in must_be_link:
                 must_be_link[i] = set()
@@ -151,7 +154,11 @@ class ConstraintMatrix:
                     continue
 
                 if j in cannot_be_link[i]:
-                    cannot_be_link[i].difference(must_be_link[j])
+                    difference_ij = must_be_link[j].difference(cannot_be_link[i])
+                    difference_ji = must_be_link[i].difference(cannot_be_link[j])
+                    
+                    cannot_be_link[i] = cannot_be_link[i].union(difference_ij)
+                    cannot_be_link[j] = cannot_be_link[j].union(difference_ji)
                     continue
 
         for i in range(shape[0]):
@@ -175,6 +182,21 @@ class ConstraintMatrix:
         self.__ml = must_be_link
         self.__cl = cannot_be_link
 
+    def get_constraints(self, i: int) -> np.ndarray:
+        """This method returns the set of constraints that are cannot-be-link (CL) and must-be-link (ML)
+
+        Parameters
+        ----------
+        i : int
+            The index of the instance to get the constraints
+
+        Returns
+        -------
+        list
+            The set of constraints that are cannot-be-link (CL) and must-be-link (ML)
+        """
+        return self.__matrix[i]
+
     def get_cl_constraints(self, i: int) -> set:
         """This method returns the set of constraints that are cannot-be-link (CL)
 
@@ -188,7 +210,6 @@ class ConstraintMatrix:
         set
             The set of constraints that are cannot-be-link (CL)
         """
-        print(f"CL: {self.__cl[i]}")
         return self.__cl[i]
 
     def get_ml_constraints(self, i: int) -> set:
