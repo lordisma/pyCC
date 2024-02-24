@@ -15,16 +15,17 @@ ________
     KMeans: KMeans estimator implementation.
 """
 
+from typing import Sequence
 import numpy as np
 from .. import BaseEstimator
-from sklearn.cluster import KMeans
-from typing import Sequence
 
-from ..constraints.matrix import ConstraintMatrix
+from ..utils.matrix import ConstraintMatrix
 
-# FIXME: Devuelve un stimator, ajustarse a sklearn https://scikit-learn.org/stable/modules/generated/sklearn.cluster.KMeans.html#sklearn.cluster.KMeans.fit
-# TODO: Crear una clase base
+
+# FIXME: Devuelve un stimator, ajustarse a sklearn
+# https://scikit-learn.org/stable/modules/generated/sklearn.cluster.KMeans.html#sklearn.cluster.KMeans.fit
 class COPKMeans(BaseEstimator):
+    # pylint: disable=too-many-instance-attributes
     """COPKMeans
 
 
@@ -46,12 +47,6 @@ class COPKMeans(BaseEstimator):
         Custom initial centroids to be used in the initialization. Only used if init='custom'.
     """
 
-    __lower_bounds: np.ndarray
-    __upper_bounds: np.ndarray
-    __delta_centroid: np.ndarray
-    __centroids_distance: np.ndarray
-    _labels: np.ndarray
-
     def __init__(
         self,
         n_clusters=8,
@@ -61,9 +56,9 @@ class COPKMeans(BaseEstimator):
         custom_initial_centroids=None,
         constraints: Sequence[Sequence] = None,
     ):
-        self.__delta_centroid = np.zeros(self.centroids.shape)
-        self.__centroids_distance = np.zeros((self.n_clusters, self.n_clusters))
+        self._delta_centroid = None
         self.n_clusters = n_clusters
+        self._centroids_distance = np.zeros((self.n_clusters, self.n_clusters))
         self.init = init
         self.max_iter = max_iter
         self.tol = tol
@@ -71,14 +66,14 @@ class COPKMeans(BaseEstimator):
         self.centroids = None
         self.constraints = ConstraintMatrix(constraints)
 
-    def fit(self, X, y=None):
+    def fit(self, dataset, labels=None):
         """Fit the model to the data.
 
         Parameters
         __________
-        X: numpy.ndarray
+        dataset: numpy.ndarray
             The data to cluster.
-        y: numpy.ndarray, default=None
+        labels: numpy.ndarray, default=None
             Ignored. This parameter exists only for compatibility with the sklearn API.
 
         Returns
@@ -86,32 +81,33 @@ class COPKMeans(BaseEstimator):
         self
             The fitted estimator.
         """
-        self.centroids = self._initialize_centroids(X)
-        self._labels = np.zeros(X.shape[0], dtype=int)
+        self.centroids = self._initialize_centroids(dataset)
+        self._delta_centroid = np.zeros(self.centroids.shape)
+        self._labels = np.zeros(dataset.shape[0], dtype=int)
 
-        self.__lower_bound, self.__upper_bound = self._initialize_bounds(X)
+        self._lower_bounds, self._upper_bounds = self._initialize_bounds(dataset)
 
         for _ in range(self.max_iter):
             try:
                 # Update centroids
-                self._update_centroids(X)
-            except ValueError as e:
+                self._update_centroids(dataset)
+            except ValueError:
                 return self.centroids
-            except Exception as e:
-                raise e
+            except Exception as error:
+                raise error
 
             # Check convergence
-            if self.__check_convergence():
+            if self._check_convergence():
                 break
 
         # Initialize clusters
         return self.centroids
 
-    def _update_label(self, X, idx):
+    def _update_label(self, dataset, idx):
         """Update the instances labels.
-        
+
         This method follows the Elkan's algorithm to update the labels of the instances.
-        
+
         Parameters
         __________
         X: numpy.ndarray
@@ -119,20 +115,20 @@ class COPKMeans(BaseEstimator):
         idx: int
             The index of the instance to update.
         """
-        instance = X[idx]
-        valid_centroids = self.__get_valid_centroids(idx)
+        instance = dataset[idx]
+        valid_centroids = self._get_valid_centroids(idx)
 
-        current_distance = self.__upper_bounds[idx]
+        current_distance = self._upper_bounds[idx]
         current_centroid = self._labels[idx]
-        closest_centroid = self.__centroids_distance[current_centroid, :].argmin()
-        min_distance = self.__centroids_distance[current_centroid, closest_centroid]
+        closest_centroid = self._centroids_distance[current_centroid, :].argmin()
+        min_distance = self._centroids_distance[current_centroid, closest_centroid]
 
         if current_centroid == closest_centroid:
-            # The centroid is choosing itself again, we should update the instance 
+            # The centroid is choosing itself again, we should update the instance
             # to keep him off
-            self.__centroids_distance[current_centroid, closest_centroid] = np.inf
-            closest_centroid = self.__centroids_distance[current_centroid, :].argmin()
-            min_distance = self.__centroids_distance[current_centroid, closest_centroid]
+            self._centroids_distance[current_centroid, closest_centroid] = np.inf
+            closest_centroid = self._centroids_distance[current_centroid, :].argmin()
+            min_distance = self._centroids_distance[current_centroid, closest_centroid]
 
         if current_distance > 0.5 * min_distance:
             # Set the instance to the current centroid
@@ -141,16 +137,16 @@ class COPKMeans(BaseEstimator):
                 current = self.centroids[self._labels[idx]]
 
                 # Check if the current distance must be updated
-                if  self.__should_check_centroid(self.__labels[idx], centroid_index, idx):
-                        distance_to_candidate = np.linalg.norm(instance - candidate)
-                        distance_to_current_centroid = np.linalg.norm(instance - current)
+                if self.__should_check_centroid(self._labels[idx], centroid_index, idx):
+                    distance_to_candidate = np.linalg.norm(instance - candidate)
+                    distance_to_current_centroid = np.linalg.norm(instance - current)
 
-                        if distance_to_candidate < distance_to_current_centroid:
-                            self._labels[idx] = centroid_index
-                            self.__upper_bounds[idx] = distance_to_candidate
-                        
-                        self.__lower_bounds[idx, centroid_index] = distance_to_candidate
-                        self.__lower_bounds[idx, current_centroid] = current_distance
+                    if distance_to_candidate < distance_to_current_centroid:
+                        self._labels[idx] = centroid_index
+                        self._upper_bounds[idx] = distance_to_candidate
+
+                    self._lower_bounds[idx, centroid_index] = distance_to_candidate
+                    self._lower_bounds[idx, current_centroid] = current_distance
 
     def _update_centroids(self, dataset):
         """Get the instances belonging to each cluster and update the centroids,
@@ -175,12 +171,12 @@ class COPKMeans(BaseEstimator):
             self.centroids[centroid_index] = instances.mean(axis=0)
 
             # Calculate the delta
-            self.__delta_centroid[centroid_index] = (
+            self._delta_centroid[centroid_index] = (
                 self.centroids[centroid_index] - old_centroid
             )
 
             # Calculate the distance between them and the other centroids
-            self.__calculate_centroids_distance()
+            self._calculate_centroids_distance()
 
         # Update lower and upper bounds
         self._update_bounds(dataset)
@@ -196,22 +192,22 @@ class COPKMeans(BaseEstimator):
 
         for instance_index, _ in enumerate(dataset):
             # Assume that the distance between for the instance and the centroid is decreasing
-            self.__lower_bounds[instance_index, :] -= np.linalg.norm(
-                self.__delta_centroid, axis=1
+            self._lower_bounds[instance_index, :] -= np.linalg.norm(
+                self._delta_centroid, axis=1
             )
 
             # Assume that the distance between the instance and the centroid is increasing
-            self.__upper_bounds[instance_index] += np.linalg.norm(
-                self.__delta_centroid[self._labels[instance_index]]
+            self._upper_bounds[instance_index] += np.linalg.norm(
+                self._delta_centroid[self._labels[instance_index]]
             )
 
-            valid_centroids = self.__get_valid_centroids(instance_index)
+            valid_centroids = self._get_valid_centroids(instance_index)
             if len(valid_centroids) == 0:
                 raise ValueError("Invalid set of centroids")
             if len(valid_centroids) == 1:
                 self._labels[instance_index] = valid_centroids[0]
                 continue
-            
+
             # Update the labels
             self._update_label(dataset, instance_index)
 
@@ -232,8 +228,9 @@ class COPKMeans(BaseEstimator):
         bool
             True if the candidate centroid is a valid option for the instance, False otherwise.
         """
-        return (
-            self.__upper_bounds[idx] > self.__lower_bounds[idx, candidate_centroid]
-        ) and (
-            self.__upper_bounds[idx] > 0.5 * self.__centroids_distance[centroid_index, candidate_centroid]
+        half_distance = (
+            0.5 * self._centroids_distance[centroid_index, candidate_centroid]
         )
+        return (
+            self._upper_bounds[idx] > self._lower_bounds[idx, candidate_centroid]
+        ) and (self._upper_bounds[idx] > half_distance)

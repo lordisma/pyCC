@@ -12,9 +12,8 @@ from abc import ABC
 from sklearn.base import ClusterMixin as SklearnBaseEstimator
 
 import numpy as np
-from typing import Sequence
 
-from constraints.matrix import ConstraintMatrix
+from .utils import ConstraintMatrix
 
 
 class BaseEstimator(ABC, SklearnBaseEstimator):
@@ -27,14 +26,24 @@ class BaseEstimator(ABC, SklearnBaseEstimator):
     explicit keyword arguments (no ``*args`` or ``**kwargs``).
     """
 
-    def fit(self, X, y=None):
+    _lower_bounds: np.ndarray
+    _upper_bounds: np.ndarray
+    _delta_centroid: np.ndarray
+    _centroids_distance: np.ndarray
+    _labels: np.ndarray
+    centroids: np.ndarray
+    n_clusters: int
+    tol: float
+    constraints: ConstraintMatrix
+
+    def fit(self, dataset, labels=None):
         """Fit the model to the data.
 
         Parameters
         __________
-        X: numpy.ndarray
+        dataset: numpy.ndarray
             The data to cluster.
-        y: numpy.ndarray, default=None
+        labels: numpy.ndarray, default=None
             Ignored. This parameter exists only for compatibility with the sklearn API.
 
         Returns
@@ -44,14 +53,14 @@ class BaseEstimator(ABC, SklearnBaseEstimator):
         """
         raise NotImplementedError
 
-    def _update_centroids(self, X):
+    def _update_centroids(self, dataset):
         """Update the centroids of the clusters.
 
         This method should be implemented by any class that inherits from it.
 
         Parameters
         __________
-        X: numpy.ndarray
+        dataset: numpy.ndarray
             The data to cluster.
 
         Returns
@@ -61,64 +70,47 @@ class BaseEstimator(ABC, SklearnBaseEstimator):
         """
         raise NotImplementedError
 
-    def _update_bounds(self, X):
+    def _update_bounds(self, dataset):
         """Update the bounds of the clusters.
-        
+
         This method should be implemented by any class that inherits from it.
-        
+
         Parameters
         __________
-        X: numpy.ndarray
+        dataset: numpy.ndarray
             The data to cluster.
         """
         raise NotImplementedError
 
-    def _update_labels(self, X):
+    def _update_labels(self, dataset):
         """Update the instances labels.
-        
+
         This method should be implemented by any class that inherits from it.
-        
+
         Parameters
         __________
-        X: numpy.ndarray
+        dataset: numpy.ndarray
             The data to cluster.
         """
         raise NotImplementedError
 
-    def __calculate_centroids_distance(self):
+    def _calculate_centroids_distance(self):
         """Calculate the distance between centroids and other centroids.
 
-        This method will update the __centroids_distance.
+        This method will update the _centroids_distance.
         """
         for i in range(self.n_clusters):
             for j in range(self.n_clusters):
                 if i == j:
-                    self.__centroids_distance[i, j] = np.inf # If it is the same centroid, the distance is infinite
+                    self._centroids_distance[
+                        i, j
+                    ] = np.inf  # If it is the same centroid, the distance is infinite
                 else:
-                    self.__centroids_distance[j, i] = np.linalg.norm(
+                    self._centroids_distance[j, i] = np.linalg.norm(
                         self.centroids[i] - self.centroids[j]
                     )
-        
-    def __check_cl_constraints(self, index):
-        """Check the graph of constraints and return a list of valid centroids.
 
-        This method should be overriden by when looking to do a soft clustering.
-        since at the current moment it only takes into account the hard constraints.
-
-        The lower bound of the instance will be set to infinity for invalid centroids.
-
-        Parameters
-        __________
-        index: int
-            Index of the instance to check.
-        """
-        cl_constraints = self.constraints.get_cl_constraints(index)
-        cl = self.__get_centroids_from_constraints(cl_constraints)
-
-        if cl.shape[0] == 0:
-            self.__lower_bound[index, cl] = np.inf
-
-    def __check_convergence(self):
+    def _check_convergence(self):
         """Check convergence of the algorithm.
 
         Returns
@@ -127,7 +119,7 @@ class BaseEstimator(ABC, SklearnBaseEstimator):
             True if the algorithm has converged, False otherwise.
         """
         # Check convergence
-        return np.all(np.linalg.norm(self.__delta_centroid, axis=1) <= self.tol)
+        return np.all(np.linalg.norm(self._delta_centroid, axis=1) <= self.tol)
 
     def __get_centroids_from_constraints(self, constraints):
         """Get current class of a set of instances, this will be used to
@@ -149,7 +141,7 @@ class BaseEstimator(ABC, SklearnBaseEstimator):
         clusters = list(map(int, set(self._labels[list(constraints)])))
         return np.asarray(clusters, dtype=int)
 
-    def __get_valid_centroids(self, index):
+    def _get_valid_centroids(self, index):
         """Check the graph of constrains and return a list of valid centroids.
 
         This method should be overriden by when looking to do a soft clustering.
@@ -176,20 +168,21 @@ class BaseEstimator(ABC, SklearnBaseEstimator):
             cl_prototypes = []
         else:
             cl_prototypes = self.__get_centroids_from_constraints(cl_constraints)
-        
+
         range_centroids = np.arange(self.n_clusters)
 
         if len(ml_prototypes) != 0:
             return range_centroids[np.isin(range_centroids, ml_prototypes)]
-        elif len(cl_prototypes) != 0:
-            return np.delete(range_centroids, cl_prototypes) 
-        else:
-            return range_centroids
+
+        if len(cl_prototypes) != 0:
+            return np.delete(range_centroids, cl_prototypes)
+
+        return range_centroids
 
     def _initialize_bounds(self, dataset):
         """Initialize lower and upper bounds for each instance.
 
-        This method will calculate the distance to each of the centroids in the cluster. 
+        This method will calculate the distance to each of the centroids in the cluster.
         After that, it will assign the closest centroid to each instance and apply the constraints
         to make sure that the instances respect the limitations.
 
@@ -203,7 +196,7 @@ class BaseEstimator(ABC, SklearnBaseEstimator):
 
         Parameters
         __________
-        X: numpy.ndarray
+        dataset: numpy.ndarray
             Training instances to cluster.
 
         Returns
@@ -226,36 +219,50 @@ class BaseEstimator(ABC, SklearnBaseEstimator):
             # Get the closest centroid to the instance
             self._labels[instance_index] = lower_bounds[instance_index, :].argmin()
 
-            upper_bounds[instance_index] = np.min(lower_bounds[instance_index, self._labels[instance_index]])
+            upper_bounds[instance_index] = np.min(
+                lower_bounds[instance_index, self._labels[instance_index]]
+            )
 
         # Apply the constraints to the newly created bounds and labels
         for instance_index in range(dataset.shape[0]):
             ml_constraints = self.constraints.get_ml_constraints(instance_index)
             cl_constraints = self.constraints.get_cl_constraints(instance_index)
 
-            for ml_constraint in ml_constraints: # Soft ML constraints, it can be violated
+            for (
+                ml_constraint
+            ) in ml_constraints:  # Soft ML constraints, it can be violated
                 if self._labels[ml_constraint] != self._labels[instance_index]:
                     if upper_bounds[instance_index] > upper_bounds[ml_constraint]:
                         self._labels[instance_index] = self._labels[ml_constraint]
-                        upper_bounds[instance_index] = lower_bounds[instance_index, self._labels[ml_constraint]]
+                        upper_bounds[instance_index] = lower_bounds[
+                            instance_index, self._labels[ml_constraint]
+                        ]
                     else:
                         self._labels[ml_constraint] = self._labels[instance_index]
-                        upper_bounds[ml_constraint] = lower_bounds[ml_constraint, self._labels[instance_index]]
+                        upper_bounds[ml_constraint] = lower_bounds[
+                            ml_constraint, self._labels[instance_index]
+                        ]
 
-            
             for cl_constraint in cl_constraints:
                 if self._labels[cl_constraint] == self._labels[instance_index]:
                     if upper_bounds[instance_index] > upper_bounds[cl_constraint]:
-                        lower_bounds[instance_index, self._labels[instance_index]] = np.inf
+                        lower_bounds[
+                            instance_index, self._labels[instance_index]
+                        ] = np.inf
                         new_centroid = lower_bounds[instance_index, :].argmin()
                         self._labels[instance_index] = new_centroid
-                        upper_bounds[instance_index] = lower_bounds[instance_index, new_centroid]
+                        upper_bounds[instance_index] = lower_bounds[
+                            instance_index, new_centroid
+                        ]
                     else:
-                        lower_bounds[cl_constraint, self._labels[cl_constraint]] = np.inf
+                        lower_bounds[
+                            cl_constraint, self._labels[cl_constraint]
+                        ] = np.inf
                         new_centroid = lower_bounds[cl_constraint, :].argmin()
                         self._labels[cl_constraint] = new_centroid
-                        upper_bounds[cl_constraint] = lower_bounds[cl_constraint, new_centroid]
-
+                        upper_bounds[cl_constraint] = lower_bounds[
+                            cl_constraint, new_centroid
+                        ]
 
         return lower_bounds, upper_bounds
 
@@ -264,7 +271,7 @@ class BaseEstimator(ABC, SklearnBaseEstimator):
 
         Parameters
         __________
-        X: numpy.ndarray
+        dataset: numpy.ndarray
             Training instances to cluster.
 
         Returns

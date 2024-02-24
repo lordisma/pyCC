@@ -1,4 +1,4 @@
-from clustlib.constraints import ConstraintMatrix
+from clustlib.utils import ConstraintMatrix
 
 import numpy as np
 import unittest as utest

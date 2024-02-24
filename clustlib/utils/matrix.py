@@ -1,3 +1,4 @@
+# pylint: skip-file
 """Contraint's Matrix
 
 This files contains an implementation of a Contraints Matrix. This is one of the most, if not the most, basic and
@@ -16,10 +17,10 @@ error.
 """
 from typing import SupportsIndex, Sequence
 import numpy as np
-from numpy.typing import ArrayLike, DTypeLike
-from .._typing import SupportBuffer, ShapeLike, OrderKACF
+from .._typing import ShapeLike
 
 
+# FIXME: Solve pylint error
 class ConstraintMatrix:
     """ConstraintMatrix
 
@@ -111,12 +112,12 @@ class ConstraintMatrix:
                     result[i].add(k)
                     dfs(ml, cl, visited, k, result)
 
-        # 
+        #
         for i in range(shape[0]):
-            if not i in must_be_link:
+            if i not in must_be_link:
                 must_be_link[i] = set()
 
-            if not i in cannot_be_link:
+            if i not in cannot_be_link:
                 cannot_be_link[i] = set()
 
             for j in range(shape[0]):
@@ -128,14 +129,14 @@ class ConstraintMatrix:
 
                 if self.__matrix[i, j] > 0:
                     must_be_link[i].add(j)
-                    if not j in must_be_link:
+                    if j not in must_be_link:
                         must_be_link[j] = set()
                     must_be_link[j].add(i)
                     continue
 
                 if self.__matrix[i, j] < 0:
                     cannot_be_link[i].add(j)
-                    if not j in cannot_be_link:
+                    if j not in cannot_be_link:
                         cannot_be_link[j] = set()
                     cannot_be_link[j].add(i)
                     continue
@@ -156,7 +157,7 @@ class ConstraintMatrix:
                 if j in cannot_be_link[i]:
                     difference_ij = must_be_link[j].difference(cannot_be_link[i])
                     difference_ji = must_be_link[i].difference(cannot_be_link[j])
-                    
+
                     cannot_be_link[i] = cannot_be_link[i].union(difference_ij)
                     cannot_be_link[j] = cannot_be_link[j].union(difference_ji)
                     continue
