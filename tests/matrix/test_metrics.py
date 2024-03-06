@@ -1,5 +1,5 @@
 from clustlib import metrics
-from clustlib.constraints import matrix as mtx
+from clustlib.utils import matrix as mtx
 
 import numpy as np
 import unittest as utest
