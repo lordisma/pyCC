@@ -92,7 +92,9 @@ class ShadeCC(BaseEstimator):
         mutant = np.clip(mutant, 0, 1)
 
         cross_points_1 = np.random.rand(len(element)) <= cr_i
-        cross_points_2 = np.array(range(len(element))) == np.random.randint(len(element), size=len(element))
+        cross_points_2 = np.array(range(len(element))) == np.random.randint(
+            len(element), size=len(element)
+        )
         cross_points = np.logical_or(cross_points_1, cross_points_2)
 
         mutant = np.where(cross_points, mutant, element)
@@ -143,19 +145,15 @@ class ShadeCC(BaseEstimator):
             continue
 
         while (
-            cr_i := np.random.normal(
-                self._h_record_CR[r_i],
-                0.1
-            )
+            cr_i := np.random.normal(self._h_record_CR[r_i], 0.1)
         ) <= 0 and cr_i > 1.0:
             continue
 
         return cr_i, f_i
 
-
     def mutation(self, current_idx):
         """Mutation function
-        
+
         This function will mutate the solution using, it will select the parents and then
         it will generate the mutant solution using the crossover function
         """
@@ -167,7 +165,7 @@ class ShadeCC(BaseEstimator):
 
         cr_i, f_i = self.create_adaptive_parameter()
         mutant = self.crossover(parents, f_i, cr_i)
-        
+
         return mutant, cr_i, f_i
 
     def decode_solution(self, solution):
@@ -186,7 +184,7 @@ class ShadeCC(BaseEstimator):
         if math.isnan(fitness):
             raise ValueError("Fitness is NaN")
         return fitness
-    
+
     def calculate_fitness(self):
         current_fitness = np.array(
             [self.fitness(solution) for solution in self.population]
@@ -235,7 +233,7 @@ class ShadeCC(BaseEstimator):
             infeasability += must_link_infeasability + cannot_link_infeasability
 
         return infeasability
-    
+
     def create_population(self):
         X_size = self.dataset.shape[0]
         self._external_archive = np.zeros((self.population_size, X_size))
@@ -256,7 +254,7 @@ class ShadeCC(BaseEstimator):
         self.calculate_fitness()
 
         for iteration in range(self.max_iter):
-            # Restart the auxiliar variables for the adaptive parameters
+            # Restart the auxiliar variables for the adaptive parameters
             self._s_cr = np.zeros((0, 0))
             self._sf = np.zeros((0, 0))
             self.fitness_delta = np.zeros((0, 0))
@@ -268,17 +266,19 @@ class ShadeCC(BaseEstimator):
                 current_fitness = self._population_fitness[current_element]
 
                 if mutant_fitness < current_fitness:
-                    # If the mutant is better than the current solution
+                    # If the mutant is better than the current solution
                     # we need to update the adaptive parameters
                     self._next_population[current_element] = mutant
                     self._next_population_fitness[current_element] = mutant_fitness
-                
+
                     self.save_adaptive(current_fitness - mutant_fitness, cr_i, f_i)
                 else:
-                    self._next_population[current_element] = self.population[current_element]
+                    self._next_population[current_element] = self.population[
+                        current_element
+                    ]
                     self._next_population_fitness[current_element] = current_fitness
 
-            # Substitute the population with the new one
+            # Substitute the population with the new one
             self._population = self._next_population
             self._population_fitness = self._next_population_fitness
             self._population_fitness_sorted = np.argsort(current_fitness)
@@ -290,7 +290,7 @@ class ShadeCC(BaseEstimator):
         self.get_centroids(labels)
 
         return self
-    
+
     def get_labels(self):
         best = self._population[self._population_fitness_sorted[0]]
         return self.decode_solution(best)
