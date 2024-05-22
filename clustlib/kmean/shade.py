@@ -1,13 +1,10 @@
 from typing import Sequence
 import numpy as np
 from clustlib.model import BaseEstimator
-import pygad as pg
 import math
 from ..utils.matrix import ConstraintMatrix
 from itertools import compress
 import scipy
-
-import logging
 
 
 class ShadeCC(BaseEstimator):
@@ -168,12 +165,14 @@ class ShadeCC(BaseEstimator):
 
         return mutant, cr_i, f_i
 
+    # TODO: Move to base class
     def decode_solution(self, solution):
         decoded = np.ceil(solution * self.n_clusters)
         decoded[decoded == 0] = 1
 
         return decoded - 1
 
+    # TODO: Move to base class
     def fitness(self, solution):
         labels = self.decode_solution(solution)
         total_distance = self.distance_to_cluster(labels)
@@ -185,6 +184,7 @@ class ShadeCC(BaseEstimator):
             raise ValueError("Fitness is NaN")
         return fitness
 
+    # TODO: Move to base class
     def calculate_fitness(self):
         current_fitness = np.array(
             [self.fitness(solution) for solution in self.population]
@@ -193,6 +193,7 @@ class ShadeCC(BaseEstimator):
         self._population_fitness = current_fitness
         self._population_fitness_sorted = np.argsort(current_fitness)
 
+    # TODO: Move to base class
     def distance_to_cluster(self, labels):
         total_distance = 0.0
 
@@ -218,6 +219,7 @@ class ShadeCC(BaseEstimator):
 
         return total_distance
 
+    # TODO: Move to base class
     def infeseability(self, labels):
         infeasability = 0
 
