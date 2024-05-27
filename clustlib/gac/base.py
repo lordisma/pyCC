@@ -1,13 +1,8 @@
 from clustlib.model import BaseEstimator
-from clustlib.utils import ConstraintMatrix
-from typing import Sequence
 import math
 
 import numpy as np
-import copy as cp
 from itertools import compress
-
-from abc import abstractmethod
 
 
 class GeneticClustering(BaseEstimator):

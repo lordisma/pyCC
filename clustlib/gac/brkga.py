@@ -1,8 +1,6 @@
 import numpy as np
 import copy as cp
-import math
 
-from itertools import compress
 from typing import Sequence
 from ..utils.matrix import ConstraintMatrix
 
