@@ -28,8 +28,6 @@ class COPKMeans(BaseEstimator):
     # pylint: disable=too-many-instance-attributes
     """COPKMeans
 
-
-
     Parameters
     __________
     n_clusters: int, default=8
@@ -189,6 +187,15 @@ class COPKMeans(BaseEstimator):
         X: numpy.ndarray
             Training instances to cluster.
         """
+
+        "FIXME: Maybe more efficient --_--"
+        for centroids_index, _ in enumerate(self.centroids):
+            members = np.where(self._labels == centroids_index)[0]
+            self._upper_bounds[members] += self._delta_centroid[centroids_index]
+
+            self._lower_bounds -= np.matlib.repmat(
+                self._delta_centroid, len(self._lower_bounds), 1
+            )
 
         for instance_index, _ in enumerate(dataset):
             # Assume that the distance between for the instance and the centroid is decreasing

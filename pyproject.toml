@@ -22,11 +22,14 @@ maturin = "^1.4.0"
 pandas = "^2.2.0"
 seaborn = "^0.13.2"
 pygad = "^3.3.1"
+matlab = "^0.1"
+matlib = "^0.1.2"
 
 [tool.poetry.group.dev.dependencies]
 jupyter = "^1.0.0"
 notebook = "^7.0.7"
 ipykernel = "^6.29.0"
+black = "^24.10.0"
 
 [build-system]
 requires = ["maturin>=1.0,<2.0"]

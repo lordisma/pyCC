@@ -1,23 +1,15 @@
-import unittest as utest
+from clustlib.base import lloyd as lloyd
+import numpy as np
 
-class TestKMeans(utest.TestCase):
-    def test_initialization(self):
-        pass
 
-    def test_fit(self):
-        pass
+class TestBaseKMeans:
+    def test_kmeans(self):
+        kmeans = lloyd.LloydKMeans(
+            centroids=np.array([[1, 2], [8, 9]]),
+            labels=np.array([0, 1, 0, 1]),
+            X=np.array([[1.1, 2.1], [8.1, 9.1], [1.2, 2.2], [8.2, 9.2]]),
+        )
 
-    def test_predict(self):
-        pass
-
-    def test_transform(self):
-        pass
-
-    def test_score(self):
-        pass
-
-    def test_set_params(self):
-        pass
-
-    def test_get_params(self):
-        pass
+        kmeans.update()
+        print(kmeans._centroids.tolist())
+        assert True
