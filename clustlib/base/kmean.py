@@ -16,8 +16,9 @@ class KMeans:
         numb_obj = self.X.shape[0]
 
         for c in range(self._centroids.shape[0]):
-            diff_to_centroid = self.X - np.tile(self._centroids[c, :], (numb_obj, 1))
-            self._distances[:, c] = np.sum(np.power(diff_to_centroid, 2), 1).T
+            self._distances[:, c] = np.linalg.norm(
+                self.X, np.tile(self._centroids[c, :], numb_obj), axis=1
+            )
 
     def update(self):
         raise NotImplementedError

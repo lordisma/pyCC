@@ -9,7 +9,9 @@ class ElkanKMeans(KMeans):
     _delta_centroid: np.ndarray
     _distance: np.ndarray
 
-    def _initialize_bounds(self):
+    _tolerance: float
+
+    def _update_bounds(self):
         """Initialize lower and upper bounds for each instance.
 
         This method will calculate the distance to each of the centroids in the cluster.
@@ -36,60 +38,95 @@ class ElkanKMeans(KMeans):
         numpy.ndarray
             Upper bounds for each instance.
         """
-        n_clusters = self.centroids.shape[0]
-        lower_bounds = np.zeros((self.X.shape[0], n_clusters))
-        upper_bounds = np.zeros((self.X.shape[0]))
+        self._update_distance()
 
-        self.__update_distance()
+        self._lower_bounds = self._distances.copy()
+        self._upper_bounds = np.min(self._lower_bounds, axis=1)
 
-        # Initialize lower and upper bounds
-        for instance_index, instance in enumerate(self.X):
-            # Get the closest centroid to the instance
-            self._labels[instance_index] = lower_bounds[instance_index, :].argmin()
+        self._labels = np.argmin(self._lower_bounds, axis=1)
 
-            upper_bounds[instance_index] = np.min(
-                lower_bounds[instance_index, self._labels[instance_index]]
+    def _update(self):
+        """
+        Update the centroids and the bounds for each instance in the dataset
+        """
+        previous_centroids = self._centroids.copy()
+
+        for c in range(self._centroids.shape[0]):
+            previous_centroid = self._centroids[c]
+            self._centroids[c, :] = np.mean(self.X[self._labels == c], axis=0)
+
+            self._delta_centroid[c] = np.linalg.norm(
+                self._centroids[c], previous_centroid
             )
 
-        # Apply the constraints to the newly created bounds and labels
-        for instance_index in range(dataset.shape[0]):
-            ml_constraints = self.constraints.get_ml_constraints(instance_index)
-            cl_constraints = self.constraints.get_cl_constraints(instance_index)
+        if np.any(
+            abs(np.sum((self._delta_centroid / previous_centroids) * 100))
+            < self._tolerance
+        ):
+            self._update_bounds()
+            return
 
-            for (
-                ml_constraint
-            ) in ml_constraints:  # Soft ML constraints, it can be violated
-                if self._labels[ml_constraint] != self._labels[instance_index]:
-                    if upper_bounds[instance_index] > upper_bounds[ml_constraint]:
-                        self._labels[instance_index] = self._labels[ml_constraint]
-                        upper_bounds[instance_index] = lower_bounds[
-                            instance_index, self._labels[ml_constraint]
-                        ]
-                    else:
-                        self._labels[ml_constraint] = self._labels[instance_index]
-                        upper_bounds[ml_constraint] = lower_bounds[
-                            ml_constraint, self._labels[instance_index]
-                        ]
+        for i in range(self._centroids.shape[0]):
+            self._lower_bounds[:, i] -= self._delta_centroid[i]
+            self._upper_bounds[np.where(self._labels == i)] += self._delta_centroid[i]
 
-            for cl_constraint in cl_constraints:
-                if self._labels[cl_constraint] == self._labels[instance_index]:
-                    if upper_bounds[instance_index] > upper_bounds[cl_constraint]:
-                        lower_bounds[
-                            instance_index, self._labels[instance_index]
-                        ] = np.inf
-                        new_centroid = lower_bounds[instance_index, :].argmin()
-                        self._labels[instance_index] = new_centroid
-                        upper_bounds[instance_index] = lower_bounds[
-                            instance_index, new_centroid
-                        ]
-                    else:
-                        lower_bounds[
-                            cl_constraint, self._labels[cl_constraint]
-                        ] = np.inf
-                        new_centroid = lower_bounds[cl_constraint, :].argmin()
-                        self._labels[cl_constraint] = new_centroid
-                        upper_bounds[cl_constraint] = lower_bounds[
-                            cl_constraint, new_centroid
-                        ]
+    def fit(self):
+        while self._convergence():
+            self._update()
 
-        return lower_bounds, upper_bounds
+            _distance_between_centroids = np.linalg.norm(
+                self._centroids - self._centroids[:, None], axis=-1
+            )
+            np.fill_diagonal(_distance_between_centroids, np.inf)
+
+            for i in range(self._centroids.shape[0]):
+                half_distance_to_closest = (
+                    np.min(_distance_between_centroids[i, :]) * 0.5
+                )
+
+                greater_than = np.where(self._upper_bounds > half_distance_to_closest)
+                label_is = np.where(self._labels == i)
+                points_to_consider = np.intersect1d(
+                    greater_than, label_is, assume_unique=True
+                )
+
+                if points_to_consider.shape[0] == 0:
+                    self._lower_bounds[label_is, i] -= self._delta_centroid[i]
+                    self._upper_bounds[label_is] += self._delta_centroid[i]
+                else:
+                    for idx in points_to_consider:
+                        current_distance = self._upper_bounds[idx]
+
+                        distance_is_bigger = np.where(
+                            self._lower_bounds[idx, :] < current_distance
+                        )
+                        inter_centroid_distance = np.where(
+                            (_distance_between_centroids[i, :] * 0.5) < current_distance
+                        )
+
+                        target_centroids = np.intersect1d(
+                            distance_is_bigger,
+                            inter_centroid_distance,
+                            assume_unique=True,
+                        )
+
+                        if target_centroids.shape[0] == 0:
+                            self._lower_bounds[idx, :] -= self._delta_centroid[i]
+                            self._upper_bounds[idx] += self._delta_centroid[i]
+                        else:
+                            self._lower_bounds[idx, :] = np.linalg.norm(
+                                self.X[idx] - self._centroids, axis=1
+                            )
+                            if np.any(self._lower_bounds[idx, :] < current_distance):
+                                self._labels[idx] = np.argmin(
+                                    self._lower_bounds[idx, :]
+                                )
+                                self._upper_bounds[idx] = np.min(
+                                    self._lower_bounds[idx, :]
+                                )
+
+                    rest_points = np.setdiff1d(
+                        label_is, points_to_consider, assume_unique=True
+                    )
+                    self._lower_bounds[rest_points, :] -= self._delta_centroid[i]
+                    self._upper_bounds[rest_points] += self._delta_centroid[i]
