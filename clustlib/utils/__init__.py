@@ -10,5 +10,6 @@ ConstraintsMatrix: Data structure form of multidimensional arrays that represent
 """
 
 from .matrix import ConstraintMatrix
+from .solqp import solqp
 
-__all__ = ["ConstraintMatrix"]
+__all__ = ["ConstraintMatrix", "solqp"]

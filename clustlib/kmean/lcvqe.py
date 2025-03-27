@@ -55,8 +55,8 @@ class LCVQE(KMeansBaseEstimator):
 
             if min_case == 0:
                 # Keep the instances in the same cluster
-                GMLV[c_i] = np.append(GMLV[c_i], j)
-                GMLV[c_j] = np.append(GMLV[c_j], i)
+                self.must_link_violations[c_i][j] = 1
+                self.must_link_violations[c_j][i] = 1
             elif min_case == 1:
                 # Change the cluster of the instance j
                 self._labels[j] = c_i
@@ -68,68 +68,61 @@ class LCVQE(KMeansBaseEstimator):
         """
         Get the distance of an instance to the closest centroid, and the distance to the other instances
 
-        TODO: Implement the method to check the cl cases
         Parameters
         __________
         dataset: numpy.ndarray
             The data to cluster.
         """
-        for i, j in self.constraints.get_cl_cases():
-            c_i, distance_c_i = self._get_closest_centroid(dataset[i])
-            c_j, distance_c_j = self._get_closest_centroid(dataset[j])
+        for i, j in self.constraints.get_cl_constraints():
+            cluster_i = self._labels[i]
+            cluster_j = self._labels[j]
 
-            if c_i == c_j:
+            if cluster_i != cluster_j:
                 continue
 
-            if distance_c_j < distance_c_i:
-                r_j = j
-                closest_object = i
+            distances_i = np.linalg.norm(self.centroids - self.X[i], axis=1)
+            distances_j = np.linalg.norm(self.centroids - self.X[j], axis=1)
 
-            distance_r_closet = self.__calculate_distance(dataset[r_j], MM_j)
+            mean_distances = np.argsort(np.mean(np.hstack((distances_i, distances_j)), axis=1))
+            mean_distances = np.setdiff1d(mean_distances, np.array([cluster_i, cluster_j]))
 
-            case_a = 0.5 * distance_c_i + 0.5 * distance_c_j + 0.5 * distance_r_closet
-            case_b = 0.5 * distance_to_closet + 0.5 * distance_r_closet
+            farest_cluster = mean_distances[-1]
+            intercluster_distances = np.linalg.norm(self.centroids - self.centroids[farest_cluster], axis=1)
+            closest_cluster = np.setdiff1d(
+                np.argsort(intercluster_distances), np.array([cluster_i, cluster_j, farest_cluster])
+            )[0] 
 
-            idx_min = np.argmin([case_a, case_b])
-
-            if idx_min == 0:
-                # Keep the instances in the same cluster
-                GCLV[MM_j] = np.append(GCLV[MM_j], r_j)
-            elif idx_min == 1:
-                self._labels[closest_object] = c_i
+            distance_r = np.linalg.norm(self.centroids[closest_cluster] - self.centroids[farest_cluster])
+            if distances_i[cluster_i] > distances_j[cluster_i]:
+                # If so we should move the instance i
+                r_j = j 
             else:
-                self._labels[i] = c_i
-                self._labels[j] = other_cluster
+                r_j = i
+
+            A = 0.5 * distances_i[cluster_i] + 0.5 * distances_j[cluster_i] + 0.5 * distance_r
+            B = 0.5 * distances_i[cluster_i] + 0.5 * distances_j[cluster_j]
+
+            if A < B:
+                self.cannot_link_violations[closest_cluster][r_j] = 1
+                self._labels[i] = cluster_i
+                self._labels[j] = cluster_i
+            elif B < A:
+                self._labels[i] = cluster_j if i != r_j else closest_cluster
+                self._labels[j] = cluster_i if j != r_j else closest_cluster 
+            else:
+                self._labels[i] = cluster_i
+                self._labels[j] = self._get_closest_centroid(self.X[j])[1]
 
     def __update_centroids(self, dataset):
-        for c in range(K):
-            members = np.where(idx == c)[0]
-            coords_members = np.sum(X[members, :], 0)
-            coords_GMLV = np.sum(X[np.array(GMLV[c], dtype=np.int), :], 0)
-            coords_GCLV = np.sum(X[np.array(GCLV[c], dtype=np.int), :], 0)
-            n_j = len(members) + 0.5 * len(GMLV[c]) + len(GCLV[c])
+        for c in range(self.n_clusters):
+            members = np.where(self._labels == c)[0]
+            coords_members = np.sum(dataset[members, :], 0)
+            coords_GMLV = np.sum(dataset[np.array(self.must_link_violations[c], dtype=np.int), :], 0)
+            coords_GCLV = np.sum(dataset[np.array(self.cannot_link_violations[c], dtype=np.int), :], 0)
+            n_j = len(members) + 0.5 * len(self.cannot_link_violations[c]) + len(self.must_link_violations[c])
             if n_j == 0:
                 n_j = 1
-            centroids[c, :] = (coords_members + 0.5 * coords_GMLV + coords_GCLV) / n_j
-
-    def __calculate_violation(self, dataset):
-        for c in range(K):
-            """
-            Calculate the mean distance, the violation items and add that to the distances
-            """
-            lcvqe[c] = 0.5 * np.sum(distances[np.where(idx == c)[0], c], 0)
-            sum_ML = 0
-            sum_CL = 0
-
-            for item_violated in GMLV[c]:
-                sum_ML += distances[item_violated, c]
-
-            for item_violated in GCLV[c]:
-                sum_CL += distances[int(item_violated), int(c)]
-
-            lcvqe[c] += 0.5 * sum_ML + 0.5 * sum_CL
-
-        lcvqe = np.sum(lcvqe)
+            self.centroids[c, :] = (coords_members + 0.5 * coords_GMLV + coords_GCLV) / n_j
 
     def fit(self, dataset, labels=None):
         """Fit the model to the data.
@@ -150,12 +143,16 @@ class LCVQE(KMeansBaseEstimator):
         self._delta_centroid = np.zeros(self.centroids.shape)
         self._labels = np.zeros(dataset.shape[0], dtype=int)
 
-        self._lower_bounds, self._upper_bounds = self._initialize_bounds(dataset)
+        self.must_link_violations = np.zeros((self.n_clusters, dataset.shape[0]))
+        self.cannot_link_violations = np.zeros((self.n_clusters, dataset.shape[0]))
 
         for _ in range(self.max_iter):
             try:
+                self.__check_ml_cases(dataset)
+                self.__check_cl_cases(dataset)
+
                 # Update centroids
-                self._update_centroids(dataset)
+                self.__update_centroids(dataset)
             except ValueError:
                 return self.centroids
             except Exception as error:
