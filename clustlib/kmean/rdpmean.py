@@ -2,33 +2,32 @@ import numpy as np
 from scipy import spatial as sdist
 from typing import Tuple
 
+from ..model import BaseEstimator
 
-class RDPM:
+
+class RDPM(BaseEstimator):
     def initialize(
         self,
-        X,
-        num_clusters,
+        n_clusters,
         constraints,
         lamb=0.001,
         max_iter=300,
-        xi_0=0.001,
-        xi_rate=2,
+        limit = 0.005
     ):
-        self.X = X
-        self.num_clusters = num_clusters
+        self.n_clusters = n_clusters
         self.constraints = constraints
         self.lamb = lamb
         self.__centroids = self.normalize_centroids()
         self.max_iter = max_iter
         self.__prev_centroids: np.ndarray = np.zeros(
-            (self.num_clusters, self.X.shape[0])
+            (self.n_clusters, self.X.shape[0])
         )
         self.__min_tolrance = 0.0001
-        self.labels = np.random.randint(0, self.num_clusters, self.X.shape[0])
+        self.limit = limit
 
     def normalize_centroids(self) -> np.ndarray:
         np.random.uniform(
-            np.min(self.X, 0), np.max(self.X, 0), (self.num_clusters, self.X.shape[1])
+            np.min(self.X, 0), np.max(self.X, 0), (self.n_clusters, self.X.shape[1])
         )
 
     def stop_criteria(self, iteration) -> bool:
@@ -63,18 +62,23 @@ class RDPM:
 
     def __update_centroids(self):
         self.__centroids = np.array(
-            [self.update_centroid(c) for c in range(self.num_clusters)]
+            [self.update_centroid(c) for c in range(self.n_clusters)]
         )
-
-        # Remove empty clusters
-        for c in range(self.num_clusters):
+        
+        for c in range(self.n_clusters):
             if np.all(self.labels != c):
-                self.num_clusters -= 1
+                self.n_clusters -= 1
                 self.__centroids = np.delete(self.__centroids, c, axis=0)
 
-    def fit(self):
-        iteration = 0
+    def fit(self, dataset: np.ndarray, labels: np.array = None):
+        self.X = dataset
 
+        if labels:
+            self._labels = labels
+        else: 
+            self._labels = np.random.randint(0, self.n_clusters, self.X.shape[0])
+
+        iteration = 0
         while not self.stop_criteria(iteration):
             iteration += 1
             xi = self.__update_rate(iteration)
@@ -83,7 +87,7 @@ class RDPM:
                 min_diff = float("inf")
                 current_label = -1
 
-                for c in range(self.num_clusters):
+                for c in range(self.n_clusters):
                     if iteration > 1:
                         friends, strangers = self.__check_alliances(d, c)
 
@@ -98,7 +102,7 @@ class RDPM:
 
                 # Check if the distance to the nearest centroid is greater than a limit, if so create a new cluster
                 if min_diff >= self.limit:
-                    self.num_clusters += 1
+                    self.n_clusters += 1
                     self.__centroids = np.vstack((self.__centroids, self.X[d, :]))
                     current_label = self.__centroids.shape[0] - 1
 

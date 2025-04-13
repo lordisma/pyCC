@@ -79,13 +79,15 @@ class COPKMeans(BaseEstimator):
         self
             The fitted estimator.
         """
-        self.centroids = self._initialize_centroids(dataset)
         self._delta_centroid = np.zeros(self.centroids.shape)
         self._labels = np.zeros(dataset.shape[0], dtype=int)
 
         self._lower_bounds, self._upper_bounds = self._initialize_bounds(dataset)
 
-        for _ in range(self.max_iter):
+        iteration = 0
+
+        while self._convergence(iteration):
+            iteration += 1
             try:
                 # Update centroids
                 self._update_centroids(dataset)
@@ -93,10 +95,6 @@ class COPKMeans(BaseEstimator):
                 return self.centroids
             except Exception as error:
                 raise error
-
-            # Check convergence
-            if self._check_convergence():
-                break
 
         # Initialize clusters
         return self.centroids

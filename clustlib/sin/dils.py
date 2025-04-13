@@ -102,7 +102,6 @@ class DILS(BaseEstimator):
 
     def local_search(self, chromosome):
         generated = 0
-        improvement = True
         random_index_list = np.array(range(self._dim))
         random.shuffle(random_index_list)
         ril_ind = 0
@@ -110,7 +109,6 @@ class DILS(BaseEstimator):
 
         while generated < self._max_neighbors:
             object_index = random_index_list[ril_ind]
-            improvement = False
             original_label = chromosome[object_index]
             other_labels = np.delete(
                 np.array(range(self._result_nb_clust)), original_label
@@ -124,7 +122,6 @@ class DILS(BaseEstimator):
 
                 if new_fitness < fitness:
                     fitness = new_fitness
-                    improvement = True
                     break
                 else:
                     chromosome[object_index] = original_label

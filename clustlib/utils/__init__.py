@@ -8,8 +8,3 @@ Contains
 
 ConstraintsMatrix: Data structure form of multidimensional arrays that represents constraints in the set of data
 """
-
-from .matrix import ConstraintMatrix
-from .solqp import solqp
-
-__all__ = ["ConstraintMatrix", "solqp"]
