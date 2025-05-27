@@ -58,6 +58,11 @@ class BaseEstimator(ABC, SklearnBaseEstimator):
                 self.centroids = kmeans(dataset, self.n_clusters)
             else:
                 raise ValueError(f"Unknown initialization method")
+            
+        if self._labels is None:
+            self._labels = np.random.randint(0, self.n_clusters, dataset.shape[0], dtype=int)
+        else:
+            self._labels = np.copy(labels)
         
         return self.fit(dataset, labels)
 
@@ -94,6 +99,21 @@ class BaseEstimator(ABC, SklearnBaseEstimator):
         """
         return np.argmin(np.linalg.norm(self.centroids - x))
     
+    def calculte_delta(self, x: np.array) -> np.ndarray:
+        """Calculate the difference between the new and old centroids.
+
+        This method is used to determine when the algorithm has reached an end.
+
+        Parameters
+        __________
+        x: numpy.array
+            The old centroids
+        """
+        if self.__delta is None:
+            return np.zeros(self.centroids.shape)
+        
+        return self.centroids - x
+    
     def update(self):
         """Update the centroids of the clusters
 
@@ -104,7 +124,7 @@ class BaseEstimator(ABC, SklearnBaseEstimator):
         """
         aux = np.copy(self.centroids)
         self._update()
-        self.__delta = self.centroids - aux
+        self.__delta = self.calculte_delta(aux)
     
     def _update(self):
         """Update the centroids of the clusters.
