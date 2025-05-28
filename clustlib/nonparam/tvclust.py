@@ -1,13 +1,9 @@
 import numpy as np
 import math as m
 from scipy.special import digamma as phi, betaln, gammaln
-import scipy.stats as st
 from sklearn.preprocessing import normalize
 
 from .. import BaseEstimator
-from ..utils.distance import match_distance
-
-import itertools as it
 
 
 class TVClust(BaseEstimator):
@@ -113,7 +109,6 @@ class TVClust(BaseEstimator):
 
     # Variance of the instances to the clusters
     __variance: np.ndarray
-    __scale_matrices: np.ndarray
 
     __INF = 1e20
     __ZERO = 1e-20
@@ -160,23 +155,15 @@ class TVClust(BaseEstimator):
         Calculate the Mahalanobis distance between a point and a cluster.
         """
         p = self.X.shape[1]
-        totals = np.sum(self.__responsabilities, axis = 1)
         mahalanobis_distance = np.zeros(self.n_clusters)
-
-        for cluster in range(self.n_clusters):
-            self.__centroids[cluster] = (
-                np.mean(
-                    np.multiply(self.X, self.__responsabilities[:, cluster][:, np.newaxis]), 
-                    axis = 0
-                ) / totals[cluster]
-            )
     
+        for cluster in range(self.n_clusters):
             diff = self.X - self.__centroids[cluster]
-            mahalanobis_distance[cluster] = np.dot(np.dot(diff, self.__cov_inverse[cluster]), diff.T)
+            mahalanobis_distance[cluster] = np.linalg.multi_dot([diff, self.__cov_inverse[cluster], diff.T])
         
         return p/self.__beta + self.__nu * mahalanobis_distance
     
-    def sbp(self, i):
+    def sbp(self):
         """
         Apply the sticky breaking process to the cluster
         """
@@ -194,11 +181,9 @@ class TVClust(BaseEstimator):
         """
         Update the beta matrix
         """
-        self.__beta = np.zeros(self.n_clusters)
-        for cluster in range(self.n_clusters):
-            self.__beta[cluster] = np.sum(self.__responsabilities[:, cluster]) + self.__beta0
+        self.__beta = np.sum(self.__responsabilities, axis = 1) + self.__beta0
     
-    def update_posterior_mean(self):
+    def update_mu(self):
         """
         Compute the posterior mean muQ[k] for cluster k.
 
@@ -206,31 +191,34 @@ class TVClust(BaseEstimator):
         The N_k is the number of points in the cluster k, however, since it appears in the denominator and the numerator
         it cancels out, so we can ignore it.
         """
-        for k in range(self.n_clusters):
-            weighted_responsabilities = np.sum(self.X * self.__responsabilities[:, k][:, np.newaxis], axis=0)
-            self.__mu[k] = (self.__beta0 * self.__mu0 + weighted_responsabilities) / self.__beta[k]
-        pass
-
-    def wishart_scale_update(self, cluster):
-        total = np.sum(self.__responsabilities[:, cluster])
-        mean_x = np.mean(np.multiply(self.X, self.__responsabilities[:, cluster][:, np.newaxis]), axis = 0) / total
-
-        empirical_cov = np.dot(
-            (self.X - mean_x).T,
-            np.multiply((self.X - mean_x), self.__responsabilities[:, cluster][:, np.newaxis])
-        ) / total
-        
-        diff = mean_x - self.__mu0
-        penalty = self.__beta0 * total / np.outer(diff, diff) * self.__beta[cluster]
-        
-        self.__scale_matrices[cluster] = np.linalg.inv(penalty + total * empirical_cov + np.linalg.inv(self.__W0))
-
-    def degrees_of_freedom_update(self):
+        weighted_responsabilities = np.sum(self.__responsabilities.T, self.X, axis = 1)
+        self.__mu = (self.__beta0 * self.__mu0 + weighted_responsabilities) / self.__beta
+    
+    def update_nu(self):
         """
         Update the degrees of freedom for each cluster
         """
-        for k in range(self.n_clusters):
-            self.__nu[k] = self.__nu0 + np.sum(self.__responsabilities[:, k])
+        self.__nu = self.__nu0 + np.sum(self.__responsabilities, axis = 1)
+
+    def update_W(self, cluster):
+        totals = np.sum(self.__responsabilities, axis = 0)
+        p = self.X.shape[1]
+
+        for i in range(self.n_clusters):
+            diff = self.X - self.centroids[i]
+            empirical_cov = np.dot(
+                diff.T,
+                np.multiply(diff, self.__responsabilities[:, i][:, np.newaxis])
+            ) / totals[i]
+        
+            centroid_mu = np.outer((self.centroids[i] - self.__mu0), (self.centroids[i] - self.__mu0))
+            penalty = (self.__beta0 * totals[i]) / (centroid_mu * self.__beta[cluster])
+        
+            self.__cov_inverse[i] = np.linalg.inv(
+                penalty + 
+                totals[i] * empirical_cov + 
+                np.linalg.inv(np.identity(p))
+            )
 
     def ml_correction(self):
        phi_alpha_beta_p = phi(self.__ml_success_prior + self.__ml_error_prior)
@@ -248,34 +236,28 @@ class TVClust(BaseEstimator):
 
         return phi_alpha - phi_alpha_beta_q - phi_beta + phi_alpha_beta_p
 
-    def constraints_correction(self, instance, cluster):
+    def constraints_correction(self, instance):
         """
         This code need to be fixes as currently it is not doing what it is supposed to do
 
         the main error is negative values should not have effect in the corrections
         """
 
-        constraints = self.constraints[instance]
-        to_consider = np.argwhere(constraints >= 0)
-
-        constraints = constraints[to_consider]
-        if len(to_consider) == 0:
-            return 0
-
-        correction = constraints * self.ml_correction() - (1 - constraints) * self.cl_correction()
-        return np.sum(correction * self.__responsabilities[to_consider, cluster])
+        constraints = np.copy(self.constraints[instance]) # (n_clusters,)
+        constraints[np.argwhere(constraints <= 0)] = 0. # convert to binary constraints
+        
+        corrections = constraints * self.ml_correction() - (1 - constraints) * self.cl_correction()
+        return np.sum(self.__responsabilities * corrections[:, np.newaxis], axis = 1)
     
     def update_responsabilities(self):
-        
-        for i, instance in enumerate(self.X.shape[0]):
-            for cluster in range(self.n_clusters):
-                self.__responsabilities[i, cluster] = max(
-                    min(
-                        np.exp(self.sbp(instance, cluster) + self.constraints_correction(i, cluster)),
-                        self.__INF
-                    ), 
-                    self.__ZERO
-                )
+        for i in range(self.X.shape[0]):
+            np.clip(
+                np.exp(self.sbp() + self.constraints_correction(i)), 
+                a_min=self.__ZERO, 
+                a_max = self.__INF, 
+                out=self.__responsabilities[i]
+            )
+
 
         self.__responsabilities = self.__responsabilities / np.sum(
             self.__responsabilities, axis=1, keepdims=True
@@ -286,8 +268,10 @@ class TVClust(BaseEstimator):
         Update the gamma matrix
         """
         self.__gamma = np.zeros((self.n_clusters, 2))
+
         responsability_sum = np.sum(self.__responsabilities, axis=0)
         cumulative_sum = np.cumsum(responsability_sum)
+
         self.__gamma[:-1, 0] = responsability_sum[:-1] + 1
         self.__gamma[:-1, 1] = ((cumulative_sum[-1:] - cumulative_sum) + self.__alpha_0)[:-1]
 
@@ -452,7 +436,7 @@ class TVClust(BaseEstimator):
             nu = self.__nu[k]
             beta = self.__beta[k]
 
-            log_det_W = np.linalg.slogdet(self.__scale_matrices[k])[1]
+            log_det_W = np.linalg.slogdet(self.__cov_inverse[k])[1]
             psi_term = np.sum(phi((nu + 1 - p_values) * 0.5))
 
             # Log normalizing constant of the Wishart
@@ -514,27 +498,67 @@ class TVClust(BaseEstimator):
         self.__mu = np.random.randn((self.n_clusters, self.X.shape[1]))
         self.__nu = np.repeat(self.X.shape[1], self.n_clusters)
         self.__centroids = np.zeros((self.n_clusters, self.X.shape[1]))
+        self.__nu0 = self.X.shape[1]
+        self.__mu0 = np.zeros(self.X.shape[1])
+        self.__delta = None
+
+    def _convergence(self):
+        if self.__delta is None:
+            return False
+
+        return np.abs(self.__delta) < self.tol
+    
+    def calculte_delta(self, _):
+        if self.__delta is None:
+            self.__delta = self.check_improvement()
+        else:
+            self.__delta = (self.check_improvement() - self.__delta) / np.absolute(self.__delta)
+
+    def update(self):
+        self._update()
+        self.calculte_delta(None)
+
+    def _update(self):
+        self.update_responsabilities()
+        self.update_gamma()
+        self.update_beta()
+        self.update_mu()
+        self.update_W()
+        self.update_nu()
+        self.update_prior()
+
+    def _condicional_prob(self):   
+        self.labels = np.argmax(self.__responsabilities, axis = 1, dtype = np.uint8)
+
+    def _centroids(self):
+        """
+        Calculate the centroids of the cluster based on the current responsibilities.
+
+        Update the `self.__centroids` attribute with the mean of the data points
+        """
+        totals = np.clip(
+            np.sum(self.__responsabilities, axis = 0), 
+            a_min=self.__ZERO, 
+            a_max=self.__INF
+        )
+
+        self.__centroids = np.clip(
+            np.tensordot(self.__responsabilities.T, self.X, axes = 1) / totals[:, np.newaxis],
+            a_min=self.__ZERO,
+            a_max=self.__INF
+        )
+
 
     def fit(self, dataset: np.ndarray, labels: np.array = None):
         self.X = dataset
 
         self.initialize_parameters()
-
-        if labels:
-            self._labels = labels
-        else: 
-            self._labels = np.random.randint(0, self.n_clusters, self.X.shape[0])
-
-        self.__E_ = np.ones((self.X.shape[0], self.n_clusters)) / self.n_clusters
+        self.labels = labels
 
         for iteration in range(self.max_iter):
-            condicional_prob = np.zeros((self.X.shape[0], self.num_clusters + 1))
-
-            for i in range(self.X.shape[0]):
-                condicional_prob[i] = self.calculate_condicional_prob(i)
-
-            self.labels = np.argmax(condicional_prob, 1)
             self.update()
+            self._condicional_prob()
+            self._centroids()
 
             if self.stop_criteria(iteration):
                 break

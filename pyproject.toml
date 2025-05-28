@@ -25,6 +25,8 @@ pygad = "^3.3.1"
 matlab = "^0.1"
 matlib = "^0.1.2"
 networkx = "^3.4.2"
+jupyter = "^1.1.1"
+notebook = "^7.4.1"
 
 [tool.poetry.group.dev.dependencies]
 jupyter = "^1.0.0"
