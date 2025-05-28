@@ -1,11 +1,10 @@
 import numpy as np
-from numpy import matlib
-from .base import KMeansBaseEstimator
+from ..base import BaseEstimator
 from typing import Sequence
 from ..utils.matrix import ConstraintMatrix
 
 
-class LCVQE(KMeansBaseEstimator):
+class LCVQE(BaseEstimator):
     def __init__(
         self,
         n_clusters=8,
