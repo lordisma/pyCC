@@ -14,9 +14,12 @@ from sklearn.base import ClusterMixin as SklearnBaseEstimator
 
 import numpy as np
 
-from .utils.matrix import ConstraintMatrix
+from .utils.simpleconstraints import SimpleConstraints
 from .utils.initilize import random, kmeans
 
+import logging
+
+logger = logging.getLogger(__name__)
 
 class BaseEstimator(ABC, SklearnBaseEstimator):
     """
@@ -33,21 +36,21 @@ class BaseEstimator(ABC, SklearnBaseEstimator):
     All estimators should specify all the parameters that can be set at the class level in their ``__init__`` as
     explicit keyword arguments (no ``*args`` or ``**kwargs``).
     """
-    centroids: np.ndarray
+    centroids: np.ndarray = None
     init: InitCentroid
     
     n_clusters: int
     tol: float
-    max_iter: int
+    max_iter: int = None
     
-    constraints: ConstraintMatrix
+    constraints: SimpleConstraints
     X: np.ndarray
-    _labels: np.array
+    _labels: np.array = None
     
-    __delta: np.ndarray
+    _delta: np.ndarray = None
 
-    def fit(self, dataset: np.ndarray, constraints: np.ndarray, labels: np.array = None):
-        self.constraints = constraints
+    def fit(self, dataset: np.ndarray, labels: np.array = None):
+        self.X = np.copy(dataset)
 
         if self.centroids is None:
             if isinstance(self.init, np.ndarray):
@@ -64,9 +67,9 @@ class BaseEstimator(ABC, SklearnBaseEstimator):
         else:
             self._labels = np.copy(labels)
         
-        return self.fit(dataset, labels)
+        return self._fit()
 
-    def fit(self, dataset, labels=None):
+    def _fit(self):
         """Fit the model to the data.
 
         Parameters
@@ -99,7 +102,7 @@ class BaseEstimator(ABC, SklearnBaseEstimator):
         """
         return np.argmin(np.linalg.norm(self.centroids - x))
     
-    def calculte_delta(self, x: np.array) -> np.ndarray:
+    def calculte_delta(self, x: np.ndarray) -> np.ndarray:
         """Calculate the difference between the new and old centroids.
 
         This method is used to determine when the algorithm has reached an end.
@@ -109,10 +112,7 @@ class BaseEstimator(ABC, SklearnBaseEstimator):
         x: numpy.array
             The old centroids
         """
-        if self.__delta is None:
-            return np.zeros(self.centroids.shape)
-        
-        return self.centroids - x
+        return np.abs(self.centroids - x)
     
     def update(self):
         """Update the centroids of the clusters
@@ -124,7 +124,7 @@ class BaseEstimator(ABC, SklearnBaseEstimator):
         """
         aux = np.copy(self.centroids)
         self._update()
-        self.__delta = self.calculte_delta(aux)
+        self._delta = self.calculte_delta(aux)
     
     def _update(self):
         """Update the centroids of the clusters.
@@ -141,12 +141,18 @@ class BaseEstimator(ABC, SklearnBaseEstimator):
         bool
             True if the algorithm has converged, False otherwise.
         """
-        if self.__delta is None:
+        if self._delta is None:
+            logger.debug("Delta is None, convergence cannot be checked.")
             return False
         
-        return np.all(np.linalg.norm(self.__delta, axis=1) <= self.tol)
+        improvement = np.linalg.norm(self._delta, axis=0)
+        
+        logger.debug(f"Checking convergence with delta: {improvement}")
+        logger.debug(f"Tolerance: {self.tol}")
+        
+        return np.all(improvement <= self.tol)
     
-    def stop_criteria(self, iteration):
+    def stop_criteria(self, iteration) -> bool:
         """Check if the algorithm has reached the maximum number of iterations.
 
         Parameters
@@ -159,11 +165,12 @@ class BaseEstimator(ABC, SklearnBaseEstimator):
         bool
             True if the algorithm has reached the maximum number of iterations, False otherwise.
         """
-
         if self._convergence():
+            logger.debug("Convergence reached, stopping criteria met.")
             return True
-        
-        if self.max_iter is None or self.max_iter <= 0:
+
+        if self.max_iter is None:
+            logger.debug("No maximum iterations set, stopping criteria not met.")
             return False
         
-        return iteration >= self.max_iter
+        return iteration > self.max_iter

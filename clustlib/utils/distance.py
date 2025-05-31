@@ -1,8 +1,8 @@
 from numpy import linalg as la
-from numpy import ndarray
+from numpy import ndarray, array
 from typing import Callable, Dict
 
-type DistanceFunction = Callable[[ndarray, ndarray, Dict], float]
+type DistanceFunction = Callable[[ndarray, ndarray, Dict], float|ndarray]
 
 def match_distance(name: str) -> DistanceFunction:
     """Get the distance function by name.
@@ -22,15 +22,16 @@ def match_distance(name: str) -> DistanceFunction:
     else:
         raise ValueError(f"Unknown distance function: {name}")
     
-def euclidean_distance(a: ndarray, kwargs: Dict) -> float:
+def euclidean_distance(a: ndarray, **kwargs) -> float|ndarray:
     """Calculate the Euclidean distance between two points.
 
     Parameters
     __________
     a: numpy.ndarray
-        The first point.
-    b: numpy.ndarray
-        The second point.
+        The delta vector to calculate the distance for
+
+    **kwargs: dict
+        Additional keyword arguments to pass to the norm function.
 
     Returns
     _______

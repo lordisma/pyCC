@@ -10,8 +10,8 @@ class SimpleConstraints:
     def __init__(self, matrix: np.ndarray):
         ml = np.copy(matrix)
         ml[np.where(matrix < 0)] = 0
-        np.fill_diagonal(ml, 0)
 
+        np.fill_diagonal(ml, 0)
         cl = np.copy(matrix)
         cl[np.where(matrix > 0)] = 0
         cl = np.absolute(cl)

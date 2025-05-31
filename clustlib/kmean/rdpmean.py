@@ -1,9 +1,10 @@
 import numpy as np
-from scipy import spatial as sdist
-from typing import Tuple
 
 from ..model import BaseEstimator
 from ..utils.distance import match_distance
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 class RDPM(BaseEstimator):
@@ -36,8 +37,7 @@ class RDPM(BaseEstimator):
     rate: float
     limit: float
 
-
-    def initialize(
+    def __init__(
         self,
         constraints,
         n_clusters = 8,
@@ -46,7 +46,7 @@ class RDPM(BaseEstimator):
         custom_initial_centroids = None,
         tol = 1e-4,
         max_iter=300,
-        limit = 0.005,
+        limit = 1,
         x0 = 0.001,
         rate = 2.0
     ):
@@ -82,15 +82,14 @@ class RDPM(BaseEstimator):
         diff: int
             The difference of alliances.
         """
-        friends = np.where(self.constraints[:, d] == 1)
-        strangers = np.where(self.constraints[:, d] == -1)
+        friends = np.argwhere(self.constraints[:, d] > 0)
+        strangers = np.argwhere(self.constraints[:, d] < 0)
+        in_cluster = np.argwhere(self._labels == c)
 
-        in_cluster = np.where(self._labels[friends] == c)
+        friends = np.sum(np.isin(friends, in_cluster))
+        strangers = np.sum(np.isin(strangers, in_cluster))
 
-        friends = np.logical_and(friends, in_cluster)
-        strangers = np.logical_and(strangers, in_cluster)
-
-        return np.sum(friends) - np.sum(strangers)
+        return friends - strangers
 
     def update(self):
         """Override the update method.
@@ -105,7 +104,7 @@ class RDPM(BaseEstimator):
             self.__delete_centroids(to_remove)
             np.delete(aux, to_remove, axis=0)
 
-        self.calculate_delta(aux)
+        self._delta = self.calculte_delta(aux)
 
     def _update(self):
         """Update the centroids.
@@ -118,17 +117,24 @@ class RDPM(BaseEstimator):
         to_remove: numpy.ndarray
             The centroids to remove.
         """
-        to_remove = np.arange([False] * self.n_clusters)
+        to_remove = np.array([False] * self.n_clusters)
         for centroid in range(self.n_clusters):
             assigned = np.where(self._labels == centroid)
 
-            if np.any(assigned):
+            if not np.any(assigned):
                 to_remove[centroid] = True
+                logger.debug(f"Centroid {centroid} is empty, marking for removal")
                 continue
 
-            self.centroids[centroid] = np.mean(
-                self.X[assigned], axis=0
-            )
+            if np.sum(assigned) < 2:
+                self.centroids[centroid] = np.mean(self.X[assigned], axis=0)
+
+                if np.any(np.isnan(self.centroids[centroid])):
+                    raise ValueError(f"Centroid {centroid} has NaN values, crashing the algorithm")
+                
+            elif np.sum(assigned) == 1:
+                logger.debug(f"Centroid {centroid} has only one instance, reinitializing")
+                self.centroids[centroid] = np.random.normal(self.X[assigned][0], scale=0.1, size=self.X.shape[1])
 
         return to_remove
 
@@ -146,15 +152,16 @@ class RDPM(BaseEstimator):
         removed = 0
         for centroid, is_empty in enumerate(to_remove):
             if is_empty:
+                logger.debug(f"Removing {centroid} empty centroids")
                 removed += 1
                 continue
 
             self._labels[np.where(self._labels == centroid)] = centroid - removed
-            
-        self.centroids = np.delete(self.centroids, to_remove, axis=0)
-        self.n_clusters = np.sum(to_remove)
+        
+        self.centroids = self.centroids[~to_remove]
+        self.n_clusters = self.centroids.shape[0]
 
-    def get_penalties(self, instance: int, iteration: int) -> np.ndarray:
+    def get_penalties(self, idx: int, iteration: int) -> np.ndarray:
         """Get the label at which the instance should be assigned.
 
         Parameters
@@ -170,21 +177,18 @@ class RDPM(BaseEstimator):
         penalties: numpy.ndarray
             The penalties of the instance to be assigned to each centroid.
         """
-        diff_allies = np.array([self.diff_alliances(instance, c) for c in range(self.n_clusters)])
-        distances = np.array([self.distance(instance, c) for c in range(self.n_clusters)])
-        xi = self.x0 * (self.rate**iteration)
+        instance = self.X[idx]
 
-        penalty = distances - (xi * diff_allies)
-        return np.argmin(penalty)
+        diff = self.centroids - np.repeat(instance[np.newaxis, :], self.n_clusters, axis=0)
+        distances = self.distance(diff, axis=1).flatten()
+        diff_allies = np.array([self.diff_alliances(idx, c) for c in range(self.n_clusters)])
+
+        xi = self.x0 * (self.rate**iteration)
+        return distances - (xi * diff_allies)
               
 
-    def fit(self, dataset: np.ndarray, labels: np.array = None):
-        self.X = dataset
-        
-        if labels:
-            self._labels = labels
-        else: 
-            self._labels = np.random.randint(0, self.n_clusters, self.X.shape[0])
+    def _fit(self):
+        logger.debug("Fitting RDPM model")
 
         iteration = 0
         while not self.stop_criteria(iteration):
@@ -195,9 +199,12 @@ class RDPM(BaseEstimator):
                 label = np.argmin(penalties)
 
                 if penalties[label] >= self.limit:
+                    logger.debug(f"Instance {d} exceeds limit, creating new cluster")
                     self.n_clusters += 1
                     self.centroids = np.vstack((self.centroids, self.X[d, :]))
                     label = self.centroids.shape[0] - 1
 
                 self._labels[d] = label
+
+            logger.debug(f"Iteration {iteration} completed with clusters: {self.n_clusters}")
             self.update()
