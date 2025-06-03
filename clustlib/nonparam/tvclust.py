@@ -5,6 +5,8 @@ from sklearn.preprocessing import normalize
 
 from .. import BaseEstimator
 
+import logging
+logger = logging.getLogger(__name__)
 
 class TVClust(BaseEstimator):
     """
@@ -113,7 +115,7 @@ class TVClust(BaseEstimator):
     __INF = 1e20
     __ZERO = 1e-20
 
-    __centroids: np.ndarray
+    centroids: np.ndarray
 
     def __init__(
         self,
@@ -124,13 +126,15 @@ class TVClust(BaseEstimator):
         ml_prior: tuple = (1.0, 10.0),
         cl_prior: tuple = (10.0, 1.0),
         alpha_0: float = 1.2,
-        beta0: float = 1.0
-        ):
+        beta0: float = 1.0,
+        init = "random",
+    ):
 
         self.constraints = constraints
         self.n_clusters = n_clusters
         self.max_iter = max_iter
         self.tol = tol
+        self.init = init
         self.__alpha_0 = alpha_0
         self.__beta0 = beta0
         self.__prior_ml_success, self.__prior_ml_error = ml_prior
@@ -146,34 +150,49 @@ class TVClust(BaseEstimator):
         cluster, weighted by the probability of each data point belonging to that cluster.
         """
         p = self.X.shape[1]
-        sum = np.sum(phi(((self.__nu + 1) - np.repeat(np.arange(1, p + 1), self.n_clusters)) * 0.5))
 
-        return sum + p * m.log(2) + np.log(np.linalg.det(self.__cov_inverse))
+        aux = (self.__nu[:, np.newaxis] + 1 - np.tile(np.arange(1, p + 1) * 0.5, (self.n_clusters, 1)))
+        sum = np.sum(phi(aux))
+
+        logger.debug(f"Calculating the determinant of the covariance")
+        (sign, logdet) = np.linalg.slogdet(self.__cov_inverse)
+
+        return sum + p * m.log(2) + (sign * logdet)
     
     def expected_distance(self):
         """
         Calculate the Mahalanobis distance between a point and a cluster.
         """
         p = self.X.shape[1]
-        mahalanobis_distance = np.zeros(self.n_clusters)
+        n = self.X.shape[0]
+        mahalanobis_distance = np.zeros((self.n_clusters, n))
     
         for cluster in range(self.n_clusters):
-            diff = self.X - self.__centroids[cluster]
-            mahalanobis_distance[cluster] = np.linalg.multi_dot([diff, self.__cov_inverse[cluster], diff.T])
+            diff = self.X - self.__mu[cluster, :]
+            mahalanobis_distance[cluster, :] = np.diag(
+                np.linalg.multi_dot([diff, self.__cov_inverse[cluster], diff.T])
+            )
+
+        weighted_distances = (self.__nu[np.newaxis, :] * mahalanobis_distance.T).T
+        beta_terms = (p / self.__beta)
         
-        return p/self.__beta + self.__nu * mahalanobis_distance
+        return beta_terms[:, np.newaxis] + weighted_distances
     
     def sbp(self):
         """
         Apply the sticky breaking process to the cluster
         """
-        trust = (self.concentration() - self.expected_distance()) * 0.5
+        trust = (self.concentration()[:, np.newaxis] - self.expected_distance()) * 0.5
+        trust = trust.T
 
-        phi_alpha_beta = phi(np.sum(self.__gamma, axis = 0))
+        phi_alpha_beta = phi(np.sum(self.__gamma, axis = 1))
         phi_alpha = phi(self.__gamma[:, 0])
         phi_beta = phi(self.__gamma[:, 1])
 
-        trust += np.sum(phi_alpha - phi_alpha_beta) + np.sum(phi_beta - phi_alpha_beta)
+        alpha = np.concatenate(((phi_alpha - phi_alpha_beta)[:-1], [0]))
+        beta = np.concatenate(([0], np.cumsum(phi_beta - phi_alpha_beta)[:-1]))
+        
+        trust += alpha + beta
 
         return trust
     
@@ -181,7 +200,7 @@ class TVClust(BaseEstimator):
         """
         Update the beta matrix
         """
-        self.__beta = np.sum(self.__responsabilities, axis = 1) + self.__beta0
+        self.__beta = np.sum(self.__responsabilities, axis = 0) + self.__beta0
     
     def update_mu(self):
         """
@@ -191,16 +210,17 @@ class TVClust(BaseEstimator):
         The N_k is the number of points in the cluster k, however, since it appears in the denominator and the numerator
         it cancels out, so we can ignore it.
         """
-        weighted_responsabilities = np.sum(self.__responsabilities.T, self.X, axis = 1)
-        self.__mu = (self.__beta0 * self.__mu0 + weighted_responsabilities) / self.__beta
+        weighted_responsabilities = self.X.T.dot(self.__responsabilities)
+        self.__mu = weighted_responsabilities / self.__beta
+        self.__mu = self.__mu.T
     
     def update_nu(self):
         """
         Update the degrees of freedom for each cluster
         """
-        self.__nu = self.__nu0 + np.sum(self.__responsabilities, axis = 1)
+        self.__nu = self.__nu0 + np.sum(self.__responsabilities, axis = 0)
 
-    def update_W(self, cluster):
+    def update_W(self):
         totals = np.sum(self.__responsabilities, axis = 0)
         p = self.X.shape[1]
 
@@ -212,7 +232,7 @@ class TVClust(BaseEstimator):
             ) / totals[i]
         
             centroid_mu = np.outer((self.centroids[i] - self.__mu0), (self.centroids[i] - self.__mu0))
-            penalty = (self.__beta0 * totals[i]) / (centroid_mu * self.__beta[cluster])
+            penalty = (self.__beta0 * totals[i]) / (centroid_mu * self.__beta[i])
         
             self.__cov_inverse[i] = np.linalg.inv(
                 penalty + 
@@ -236,27 +256,26 @@ class TVClust(BaseEstimator):
 
         return phi_alpha - phi_alpha_beta_q - phi_beta + phi_alpha_beta_p
 
-    def constraints_correction(self, instance):
+    def constraints_correction(self):
         """
         This code need to be fixes as currently it is not doing what it is supposed to do
 
         the main error is negative values should not have effect in the corrections
         """
 
-        constraints = np.copy(self.constraints[instance]) # (n_clusters,)
-        constraints[np.argwhere(constraints <= 0)] = 0. # convert to binary constraints
+        constraints = np.copy(self.constraints) # (n_clusters,)
+        constraints[np.where(constraints <= 0)] = 0. # convert to binary constraints
         
         corrections = constraints * self.ml_correction() - (1 - constraints) * self.cl_correction()
-        return np.sum(self.__responsabilities * corrections[:, np.newaxis], axis = 1)
+        return corrections.dot(self.__responsabilities)
     
     def update_responsabilities(self):
-        for i in range(self.X.shape[0]):
-            np.clip(
-                np.exp(self.sbp() + self.constraints_correction(i)), 
-                a_min=self.__ZERO, 
-                a_max = self.__INF, 
-                out=self.__responsabilities[i]
-            )
+        np.clip(
+            np.exp(self.sbp() + self.constraints_correction()), 
+            a_min=self.__ZERO, 
+            a_max = self.__INF, 
+            out=self.__responsabilities
+        )
 
 
         self.__responsabilities = self.__responsabilities / np.sum(
@@ -344,7 +363,7 @@ class TVClust(BaseEstimator):
         if distance[cluster] < 1e-20:
             return 0
 
-        conc = self.concentration(cluster)
+        conc = self.concentration()
         mean_k = np.sum(np.multiply(self.X, self.__responsabilities[:, cluster]), 0) / distance[cluster]
         diff = self.X - mean_k
 
@@ -354,17 +373,18 @@ class TVClust(BaseEstimator):
             ) / distance[cluster]
         )
 
-        return 0.5 * distance[cluster] * (conc - self.expected_distance(cluster))
+        return 0.5 * distance[cluster] * (conc - self.expected_distance())
    
     def check_improvement(self):
         """
         Check if the iteration has improved over the previous one
         """
-        if self.__previous is None:
-            return np.inf
-        
-        totals = np.sum(self.__responsabilities, axis = 1)
+        totals = np.sum(self.__responsabilities, axis = 0)
         verosimilitude = 0
+        concentration = self.concentration()
+        expected_log_joint = 0
+        expected_log_stick_weight = 0
+        expected_log_alpha_term = 0
 
         negative_entropy = np.sum(self.__responsabilities * np.log(self.__responsabilities + 1e-20))
         for cluster in range(self.n_clusters):
@@ -379,7 +399,7 @@ class TVClust(BaseEstimator):
                     expected_log_alpha_term += (self.__alpha0 - 1) * (phi(b) - phi(a + b))
 
 
-            expected_log_joint += self.compute_expected_log_prior(cluster, self.concentration(cluster))
+            expected_log_joint += self.compute_expected_log_prior(cluster, concentration[cluster])
         
         entropy_sbp = self.entropy_sbp()
         entropy_wishart = self.entropy_wishart()
@@ -403,7 +423,12 @@ class TVClust(BaseEstimator):
         penalty_over_mean = self.__beta0 * self.__nu[cluster] * mahal_term
         expected_log_prior_mean = (penalty_over_beta - penalty_over_mean) * 0.5
 
-        trace = 0.5 * np.trace(np.dot(np.linalg.inv(self.__W0), self.__cov_inverse[cluster]))
+        trace = 0.5 * np.trace(
+            np.dot(
+                np.linalg.inv(np.identity(p)), 
+                self.__cov_inverse[cluster]
+            )
+        )
         prior_precision_term = self.__nu[cluster] * trace
 
         return (concentration * (self.__nu0 - p) * 0.5) + expected_log_prior_mean - prior_precision_term           
@@ -493,48 +518,68 @@ class TVClust(BaseEstimator):
         return likehood_constraints + divergence
 
     def initialize_parameters(self):
-        self.__responsabilities = np.ones((self.X.shape[0], self.n_clusters)) / self.n_clusters
-        self.__cov_inverse = np.stack([np.identity(self.X.shape[1])] * self.n_clusters)
-        self.__mu = np.random.randn((self.n_clusters, self.X.shape[1]))
-        self.__nu = np.repeat(self.X.shape[1], self.n_clusters)
-        self.__centroids = np.zeros((self.n_clusters, self.X.shape[1]))
-        self.__nu0 = self.X.shape[1]
-        self.__mu0 = np.zeros(self.X.shape[1])
-        self.__delta = None
+        n, p = self.X.shape
+
+        logger.debug("Initializing parameters for TVClust, n_clusters=%d, p=%d", self.n_clusters, p)
+        self.__responsabilities = np.ones((n, self.n_clusters), dtype=np.float64)
+        self.__responsabilities = self.__responsabilities / float(self.n_clusters)
+
+        self.__cov_inverse = np.tile(np.identity(p), (self.n_clusters, 1, 1))
+        logger.debug(f"Covariance inverse: {self.__cov_inverse.shape}")
+        
+        self.__mu = np.random.randn(self.n_clusters, p)
+        self.__nu = np.repeat(p, self.n_clusters)
+        self.centroids = np.copy(self.__mu)
+        self.__nu0 = p
+        self.__mu0 = np.zeros(p)
+        self._delta = None
 
     def _convergence(self):
-        if self.__delta is None:
+        if self._delta is None:
             return False
 
-        return np.abs(self.__delta) < self.tol
+        return np.abs(self._delta) < self.tol
     
     def calculte_delta(self, _):
-        if self.__delta is None:
-            self.__delta = self.check_improvement()
+        if self._delta is None:
+            self._delta = self.check_improvement()
         else:
-            self.__delta = (self.check_improvement() - self.__delta) / np.absolute(self.__delta)
+            self._delta = (self.check_improvement() - self._delta) / np.absolute(self._delta)
 
     def update(self):
         self._update()
         self.calculte_delta(None)
 
     def _update(self):
+        logger.debug("Updating responsibilities")
         self.update_responsabilities()
+
+        logger.debug("Updating gamma")
         self.update_gamma()
+
+        logger.debug("Updating beta")
         self.update_beta()
+
+        logger.debug("Updating mu")
         self.update_mu()
+
+        logger.debug("Updating W")
         self.update_W()
+
+        logger.debug("Updating nu")
         self.update_nu()
+
+        logger.debug("Updating prior")
         self.update_prior()
 
     def _condicional_prob(self):   
-        self.labels = np.argmax(self.__responsabilities, axis = 1, dtype = np.uint8)
+        self._labels = np.argmax(self.__responsabilities, axis = 1)
 
     def _centroids(self):
         """
         Calculate the centroids of the cluster based on the current responsibilities.
 
-        Update the `self.__centroids` attribute with the mean of the data points
+        Update the `self.centroids` attribute with the mean of the data points
         """
         totals = np.clip(
             np.sum(self.__responsabilities, axis = 0), 
@@ -542,20 +587,18 @@ class TVClust(BaseEstimator):
             a_max=self.__INF
         )
 
-        self.__centroids = np.clip(
+        self.centroids = np.clip(
             np.tensordot(self.__responsabilities.T, self.X, axes = 1) / totals[:, np.newaxis],
             a_min=self.__ZERO,
             a_max=self.__INF
         )
 
 
-    def fit(self, dataset: np.ndarray, labels: np.array = None):
-        self.X = dataset
-
+    def _fit(self):
         self.initialize_parameters()
-        self.labels = labels
 
         for iteration in range(self.max_iter):
+            logger.debug(f"Iteration {iteration + 1}/{self.max_iter}")
             self.update()
             self._condicional_prob()
             self._centroids()
