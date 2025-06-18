@@ -1,9 +1,8 @@
 import numpy as np
 import random
-import copy as cp
+from scipy.spatial.distance import pdist
 
-
-from ..utils.matrix import ConstraintMatrix
+from ..utils.distance import match_distance
 from typing import Sequence
 from clustlib.model import BaseEstimator
 
@@ -12,158 +11,225 @@ class DILS(BaseEstimator):
     def __init__(
         self,
         n_clusters=8,
-        init="random",
+        init = "random",
+        distance = "euclidean",
         max_iter=300,
-        tol=1e-4,
-        custom_init_centroids=None,
+        tol = 1e-4,
+        custom_init_centroids = None,
         constraints: Sequence[Sequence] = None,
         probability=0.2,
         similarity_threshold=0.5,
-        segment_size=10,
+        mutation_size=10,
     ):
-        self.constraints = ConstraintMatrix(constraints)
-        self._result_nb_clust = n_clusters
+        self.init = init
+        self.distance = match_distance(distance)
+        self.tol = tol
+        self.custom_initial_centroids = custom_init_centroids
+        self.constraints = constraints
+
+        self.n_clusters = n_clusters
         self._evals_done = 0
-        self._pbt_inherit = probability
-        self._similarity_threshold = similarity_threshold
-        self._segment_size = segment_size
-        self._max_iter = max_iter
+        self._probability = probability
+        self._threshold = similarity_threshold
+        self._mutation_size = mutation_size
+        self.max_iter = max_iter
 
-    def init_ils(self):
-        self._best_solution = np.random.randint(
-            0, self._result_nb_clust, (2, self._dim)
+    def initialize(self):
+        """Initialize the chromosomes and their fitness values.
+
+        This method initializes two chromosomes with random cluster assignments and calculates their fitness values.
+        """
+        cromosomes = np.random.randint(
+            0, self.n_clusters, (2, self.X.shape[0])
         )
-        self._best_fitness = np.empty(2)
-        self._best_fitness[0] = self.get_single_fitness(self._best_solution[0, :])[0]
-        self._best_fitness[1] = self.get_single_fitness(self._best_solution[1, :])[0]
+        self._fitness = np.empty(2)
+        self._fitness[0] = self.get_single_fitness(cromosomes[0, :])
+        self._fitness[1] = self.get_single_fitness(cromosomes[1, :])
 
-    # TODO: This method shoulb be implemented in the base class
-    # even better if we could parametrize this function so the
-    # user can choose how to calculate the fitness.
-    def get_single_fitness(self, cromosome):
-        current_clustering = cromosome
-        total_mean_distance = 0
-        nb_clusters = len(set(current_clustering))
+        self.best = cromosomes[np.argmin(self._fitness)]
+        self.worst = cromosomes[np.argmax(self._fitness)]
 
-        # Para cada cluster en el clustering actual
-        for j in set(current_clustering):
-            # Obtener las instancias asociadas al cluster
-            clust = self._data[current_clustering == j, :]
+    def _intra_cluster_distance(self, labels):
+        """Calculate the intra-cluster distance.
 
-            if clust.shape[0] > 1:
-                # Obtenemos la distancia media intra-cluster
-                tot = 0.0
-                for k in range(clust.shape[0] - 1):
-                    tot += ((((clust[k + 1 :] - clust[k]) ** 2).sum(1)) ** 0.5).sum()
+        This method calculates the average distance between all points in the same cluster.
+        Parameters
+        __________
+        labels: numpy.ndarray
+            The labels of the clusters.
+        Returns
+        _______
+        result: float
+            The average intra-cluster distance.
+        
+        """
+        result = 0
 
-                avg = tot / ((clust.shape[0] - 1) * (clust.shape[0]) / 2.0)
-                # Acumular la distancia media
-                total_mean_distance += avg
+        if self.n_clusters == 1:
+            return pdist(self.X, metric=self.distance).mean()
 
-        # Inicializamos el numero de restricciones que no se satisfacen
+        for j in labels.unique():
+            if np.any(labels == j):
+                result += pdist(self.X[labels == j, :], metric=self.distance).mean()
+
+        return result / self.n_clusters if self.n_clusters > 0 else 0.0
+    
+    def _ml_infeasability(self, cromosome):
+        """Calculate the infeasibility of the current clustering based on must-link constraints.
+
+        Parameters
+        __________
+        current_clustering: numpy.ndarray
+            The current clustering labels.
+
+        Returns
+        _______
+        infeasability: int
+            The number of must-link constraints that are not satisfied.
+        """
         infeasability = 0
 
-        # Calculamos el numero de restricciones must-link que no se satisfacen
-        for c in range(np.shape(self._ml)[0]):
-            if current_clustering[self._ml[c][0]] != current_clustering[self._ml[c][1]]:
-                infeasability += 1
+        for x in range(self.X.shape[0]):
+            ml_constraints = np.argwhere(self.constraints[x] > 0).flatten()
 
-        # Calculamos el numero de restricciones cannot-link que no se satisfacen
-        for c in range(np.shape(self._cl)[0]):
-            if current_clustering[self._cl[c][0]] == current_clustering[self._cl[c][1]]:
-                infeasability += 1
+            infeasability += np.sum(cromosome[ml_constraints] != cromosome[x])
 
-        # Calcular el valor de la funcion fitness
-        distance = total_mean_distance / nb_clusters
-        penalty = distance * infeasability
+        return infeasability // 2  # Each must-link constraint is counted twice, once for each element in the pair.
+    
+    def _cl_infeasability(self, cromosome):
+        """Calculate the infeasibility of the current clustering based on cannot-link constraints.
+
+        Parameters
+        __________
+        current_clustering: numpy.ndarray
+            The current clustering labels.
+
+        Returns
+        _______
+        infeasability: int
+            The number of cannot-link constraints that are not satisfied.
+        """
+        infeasability = 0
+
+        for x in range(self.X.shape[0]):
+            cl_constraints = np.argwhere(self.constraints[x] < 0).flatten()
+
+            infeasability += np.sum(cromosome[cl_constraints] != cromosome[x])
+
+        return infeasability // 2
+        
+
+    def get_single_fitness(self, cromosome):
+        """Calculate the fitness of a single chromosome.
+
+        Parameters
+        __________
+        cromosome: numpy.ndarray
+            The chromosome to evaluate.
+        Returns
+        _______
+        fitness: float
+            The fitness value of the chromosome.
+        """
+        distance = self._intra_cluster_distance(cromosome)
+        ml_infeasability = self._ml_infeasability(cromosome)
+        cl_infeasability = self._cl_infeasability(cromosome)
+
+        penalty = distance * (ml_infeasability + cl_infeasability)
         fitness = distance + penalty
 
-        # Aumentar en uno el contador de evaluacions de la funcion objetivo
-        self._evals_done += 1
-        return fitness, distance, penalty
+        return fitness
 
-    def segment_mutation_operator(self, chromosome):
-        segment_start = np.random.randint(self._dim)
-        segment_end = (segment_start + self._segment_size) % self._dim
-        new_segment = np.random.randint(0, self._result_nb_clust, self._segment_size)
+    def mutation(self, chromosome):
+        n = self.X.shape[0]
+        segment_start = np.random.randint(n)
+        segment_end = (segment_start + self._segment_size) % n
+        new_segment = np.random.randint(0, self.n_clusters, self._segment_size)
 
         if segment_start < segment_end:
             chromosome[segment_start:segment_end] = new_segment
         else:
-            chromosome[segment_start:] = new_segment[: self._dim - segment_start]
-            chromosome[:segment_end] = new_segment[self._dim - segment_start :]
+            chromosome[segment_start:] = new_segment[: n - segment_start]
+            chromosome[:segment_end] = new_segment[n - segment_start :]
         return chromosome
 
-    def uniform_crossover_operator(self, parent1, parent2):
-        v = np.where(np.random.rand(self._dim) > self._pbt_inherit)[0]
-        new_cromosome = cp.deepcopy(parent1)
+    def crossover(self, parent1, parent2):
+        """Perform crossover between two parents.
+
+        Parameters
+        __________
+        parent1: numpy.ndarray
+            The first parent chromosome.
+        parent2: numpy.ndarray
+            The second parent chromosome.
+
+        Returns
+        _______
+        new_cromosome: numpy.ndarray
+            The new chromosome created by crossover.
+        """
+        if parent1.shape != parent2.shape:
+            raise ValueError("Parent chromosomes must have the same shape.")
+
+        v = np.argwhere(np.random.rand(self.X.shape[0]) > self._probability)
+        new_cromosome = np.copy(parent1)
         new_cromosome[v] = parent2[v]
         return new_cromosome
 
-    def local_search(self, chromosome):
-        generated = 0
-        random_index_list = np.array(range(self._dim))
-        random.shuffle(random_index_list)
-        ril_ind = 0
-        fitness = self.get_single_fitness(chromosome)[0]
+    def local_search(self, chromosome, max_iter):
+        index_list = np.arange(len(chromosome))
+        fitness = self.get_single_fitness(chromosome)
+        iterations = 0
 
-        while generated < self._max_neighbors:
-            object_index = random_index_list[ril_ind]
-            original_label = chromosome[object_index]
-            other_labels = np.delete(
-                np.array(range(self._result_nb_clust)), original_label
-            )
-            random.shuffle(other_labels)
+        random.shuffle(index_list)
 
-            for label in other_labels:
-                generated += 1
-                chromosome[object_index] = label
-                new_fitness = self.get_single_fitness(chromosome)[0]
+        for index in index_list[:max_iter]:
+            original_label = chromosome[index]
+            labels = np.arange(self.n_clusters)
+
+            for label in labels:
+                if label == original_label:
+                    continue
+
+                iterations += 1
+
+                chromosome[index] = label
+                new_fitness = self.get_single_fitness(chromosome)
 
                 if new_fitness < fitness:
                     fitness = new_fitness
                     break
                 else:
-                    chromosome[object_index] = original_label
+                    chromosome[index] = original_label
 
-            if ril_ind == self._dim - 1:
-                random.shuffle(random_index_list)
-                ril_ind = 0
-            else:
-                ril_ind += 1
+            if iterations == max_iter:
+                break
 
-        return chromosome, fitness
+        return chromosome
 
-    def fit(self, dataset, labels):
-        self._data = dataset
-        self._dim = self._data.shape[0]
-        self.init_ils()
+    def _fit(self):
+        self.initialize()
+        iteration = 0
 
-        while self._evals_done < self._max_iter:
-            worst = np.argmax(self._best_fitness)
-            best = (worst + 1) % 2
-
-            new_chromosome = self.uniform_crossover_operator(
-                self._best_solution[best], self._best_solution[worst]
+        while not self.stop_criteria(iteration):
+            new_chromosome = self.crossover(
+                self.best, self.worst
             )
-            mutant = self.segment_mutation_operator(new_chromosome)
-            improved_mutant, improved_mutant_fitness = self.local_search(mutant)
 
-            if improved_mutant_fitness < self._best_fitness[worst]:
-                self._best_solution[worst] = improved_mutant
-                self._best_fitness[worst] = improved_mutant_fitness
+            mutant = self.mutation(new_chromosome)
+            improved_mutant = self.local_search(mutant)
+            improved_mutant_fitness = self.get_single_fitness(improved_mutant)
 
-            if (
-                self._best_fitness[best] - self._best_fitness[worst]
-                > self._best_fitness[best] * self._similarity_threshold
-            ):
-                worst = np.argmax(self._best_fitness)
-                self._best_solution[worst, :] = np.random.randint(
-                    0, self._result_nb_clust, self._dim
-                )
-                self._best_fitness[worst] = self.get_single_fitness(
-                    self._best_solution[worst, :]
-                )[0]
+            if improved_mutant_fitness < np.max(self._fitness):
+                self.worst = improved_mutant
+                self._fitness[np.argmax(self._fitness)] = improved_mutant_fitness
 
-        best = np.argmin(self._best_fitness)
-        return self._best_solution[best, :]
+            threshold = np.min(self._fitness) * self._threshold
+
+            if (np.max(self._fitness) - np.min(self._fitness)) > threshold:
+                worst = np.argmax(self._fitness)
+                self.worst = np.random.randint(0, self.n_clusters, self.X.shape[0])
+                self._fitness[worst] = self.get_single_fitness(self.worst)
+            iteration += 1
+
+        return self.best

@@ -55,7 +55,6 @@ class RDPM(BaseEstimator):
         self.init = init
         self.distance = match_distance(distance)
         self.centroids = None
-        self.custom_initial_centroids = None
         self.max_iter = max_iter
         self.tol = 0.0001
         self.limit = limit
