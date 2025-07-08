@@ -95,8 +95,6 @@ class ShadeCC(GeneticClustering):
         mutant = np.where(cross_points, mutant, element)
         return mutant
 
-        return np.zeros(offspring_size)
-
     def save_adaptive(self, delta_fitness, cr_i, f_i):
         # Create the S_CR, S_F and delta_fitness
         if self._sf is None:

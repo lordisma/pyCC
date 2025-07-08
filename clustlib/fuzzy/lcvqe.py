@@ -1,30 +1,91 @@
 import numpy as np
-from ..base import BaseEstimator
-from typing import Sequence
-from ..utils.matrix import ConstraintMatrix
 
+from clustlib.model import BaseEstimator
+from ..utils.distance import match_distance
+
+import logging
+logger = logging.getLogger(__name__)
 
 class LCVQE(BaseEstimator):
     def __init__(
         self,
+        constraints,
         n_clusters=8,
         init="random",
+        distance="euclidean",
         max_iter=300,
         tol=1e-4,
-        custom_initial_centroids=None,
-        constraints: Sequence[Sequence] = None,
+        custom_initial_centroids=None
     ):
-        self._delta_centroid = None
         self.n_clusters = n_clusters
-        self._centroids_distance = np.zeros((self.n_clusters, self.n_clusters))
+        self.constraints = constraints
+        self.distance = match_distance(distance)
         self.init = init
+
+        self._delta_centroid = None
+        self._centroids_distance = np.zeros((self.n_clusters, self.n_clusters))
         self.max_iter = max_iter
         self.tol = tol
         self.custom_initial_centroids = custom_initial_centroids
         self.centroids = None
-        self.constraints = ConstraintMatrix(constraints)
 
-    def __check_ml_cases(self, dataset):
+    def _get_closest_centroid(self, instance):
+        """
+        Get the closest centroid to the instance.
+
+        Parameters
+        __________
+        instance: numpy.ndarray
+            The instance to find the closest centroid.
+
+        Returns
+        _______
+        closest_centroid: int
+            The index of the closest centroid.
+        distance: float
+            The distance to the closest centroid.
+        """
+        distances = np.linalg.norm(self.centroids - instance, axis=1)
+        closest_centroid = np.argmin(distances)
+        return closest_centroid, distances[closest_centroid]
+    
+    def get_ml_cases(self):
+        """
+        Get the must-link cases for the instance.
+
+        Parameters
+        __________
+        instance: numpy.ndarray
+            The instance to find the must-link cases.
+
+        Returns
+        _______
+        ml_cases: list of tuples
+            The must-link cases for the instance.
+        """
+        ml = np.copy(self.constraints)
+        ml = ml - np.diag(np.diag(ml))  # Remove diagonal elements
+        return np.argwhere(ml > 0)
+    
+    def get_cl_constraints(self):
+        """
+        Get the cannot-link constraints for the instance.
+
+        Parameters
+        __________
+        instance: numpy.ndarray
+            The instance to find the cannot-link constraints.
+
+        Returns
+        _______
+        cl_constraints: list of tuples
+            The cannot-link constraints for the instance.
+        """
+        cl = np.copy(self.constraints)
+        cl = cl - np.diag(np.diag(cl))  # Remove diagonal elements
+        return np.argwhere(cl < 0)
+
+    def __check_ml_cases(self):
         """
         Get the distance of an instance to the closest centroid, and the distance to the other instances
 
@@ -34,15 +95,15 @@ class LCVQE(BaseEstimator):
         dataset: numpy.ndarray
             The data to cluster.
         """
-        for i, j in self.constraints.get_ml_cases():
-            c_i, distance_c_i = self._get_closest_centroid(dataset[i])
-            c_j, distance_c_j = self._get_closest_centroid(dataset[j])
+        for i, j in self.get_ml_cases():
+            c_i, distance_c_i = self._get_closest_centroid(self.X[i])
+            c_j, distance_c_j = self._get_closest_centroid(self.X[j])
 
             if c_i != c_j:
                 continue
 
-            distance_i_cj = self.__calculate_distance(dataset[i], self.centroids[c_j])
-            distance_j_ci = self.__calculate_distance(dataset[j], self.centroids[c_i])
+            distance_i_cj = self.distance(self.X[i] - self.centroids[c_j])
+            distance_j_ci = self.distance(self.X[j] - self.centroids[c_i])
 
             case_a = 0.5 * (distance_c_i + distance_c_j) + 0.25 * (
                 distance_i_cj + distance_j_ci
@@ -63,26 +124,26 @@ class LCVQE(BaseEstimator):
                 # Change the cluster of the instance i
                 self._labels[i] = c_j
 
-    def __check_cl_cases(self, dataset):
+    def __check_cl_cases(self):
         """
         Get the distance of an instance to the closest centroid, and the distance to the other instances
-
-        Parameters
-        __________
-        dataset: numpy.ndarray
-            The data to cluster.
         """
-        for i, j in self.constraints.get_cl_constraints():
+        for i, j in self.get_cl_constraints():
             cluster_i = self._labels[i]
             cluster_j = self._labels[j]
 
             if cluster_i != cluster_j:
                 continue
 
-            distances_i = np.linalg.norm(self.centroids - self.X[i], axis=1)
-            distances_j = np.linalg.norm(self.centroids - self.X[j], axis=1)
+            distances_i = self.distance(self.centroids - self.X[i], axis = 1)
+            distances_j = self.distance(self.centroids - self.X[j], axis = 1)
 
-            mean_distances = np.argsort(np.mean(np.hstack((distances_i, distances_j)), axis=1))
+            logging.deb
+
+            vstack = np.array([distances_i, distances_j])
+            mean_distances = np.argsort(np.mean(vstack, axis=1))
+            
+            logging.debug(f"Mean distances: {mean_distances}")
             mean_distances = np.setdiff1d(mean_distances, np.array([cluster_i, cluster_j]))
 
             farest_cluster = mean_distances[-1]
@@ -112,18 +173,18 @@ class LCVQE(BaseEstimator):
                 self._labels[i] = cluster_i
                 self._labels[j] = self._get_closest_centroid(self.X[j])[1]
 
-    def __update_centroids(self, dataset):
+    def _update(self):
         for c in range(self.n_clusters):
             members = np.where(self._labels == c)[0]
-            coords_members = np.sum(dataset[members, :], 0)
-            coords_GMLV = np.sum(dataset[np.array(self.must_link_violations[c], dtype=np.int), :], 0)
-            coords_GCLV = np.sum(dataset[np.array(self.cannot_link_violations[c], dtype=np.int), :], 0)
+            coords_members = np.sum(self.X[members, :], 0)
+            coords_GMLV = np.sum(self.X[np.array(self.must_link_violations[c], dtype=np.int), :], 0)
+            coords_GCLV = np.sum(self.X[np.array(self.cannot_link_violations[c], dtype=np.int), :], 0)
             n_j = len(members) + 0.5 * len(self.cannot_link_violations[c]) + len(self.must_link_violations[c])
             if n_j == 0:
                 n_j = 1
             self.centroids[c, :] = (coords_members + 0.5 * coords_GMLV + coords_GCLV) / n_j
 
-    def fit(self, dataset, labels=None):
+    def _fit(self):
         """Fit the model to the data.
 
         Parameters
@@ -138,28 +199,21 @@ class LCVQE(BaseEstimator):
         self
             The fitted estimator.
         """
-        self.centroids = self._initialize_centroids(dataset)
-        self._delta_centroid = np.zeros(self.centroids.shape)
-        self._labels = np.zeros(dataset.shape[0], dtype=int)
+        self.must_link_violations = np.zeros((self.n_clusters, self.X.shape[0]))
+        self.cannot_link_violations = np.zeros((self.n_clusters, self.X.shape[0]))
+        iteration = 0
 
-        self.must_link_violations = np.zeros((self.n_clusters, dataset.shape[0]))
-        self.cannot_link_violations = np.zeros((self.n_clusters, dataset.shape[0]))
+        logging.debug("Fitting LCVQE model")
+        while not self.stop_criteria(iteration):
+            logging.debug(f"Iteration {iteration}: Checking constraints")
+            self.__check_ml_cases()
+            self.__check_cl_cases()
 
-        for _ in range(self.max_iter):
-            try:
-                self.__check_ml_cases(dataset)
-                self.__check_cl_cases(dataset)
+            logging.debug(f"Iteration {iteration}: Updating centroids")
+            self._update()
 
-                # Update centroids
-                self.__update_centroids(dataset)
-            except ValueError:
-                return self.centroids
-            except Exception as error:
-                raise error
-
-            # Check convergence
-            if self._check_convergence():
-                break
+            logging.debug(f"Iteration {iteration}: Updating labels")
+            iteration += 1
 
         # Initialize clusters
         return self.centroids
