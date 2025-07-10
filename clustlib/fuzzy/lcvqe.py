@@ -138,23 +138,19 @@ class LCVQE(BaseEstimator):
             distances_i = self.distance(self.centroids - self.X[i], axis = 1)
             distances_j = self.distance(self.centroids - self.X[j], axis = 1)
 
-            logging.deb
-
             vstack = np.array([distances_i, distances_j])
             mean_distances = np.argsort(np.mean(vstack, axis=1))
             
-            logging.debug(f"Mean distances: {mean_distances}")
             mean_distances = np.setdiff1d(mean_distances, np.array([cluster_i, cluster_j]))
 
             farest_cluster = mean_distances[-1]
-            intercluster_distances = np.linalg.norm(self.centroids - self.centroids[farest_cluster], axis=1)
+            intercluster_distances = self.distance(self.centroids - self.centroids[farest_cluster], axis=1)
             closest_cluster = np.setdiff1d(
                 np.argsort(intercluster_distances), np.array([cluster_i, cluster_j, farest_cluster])
             )[0] 
 
             distance_r = np.linalg.norm(self.centroids[closest_cluster] - self.centroids[farest_cluster])
             if distances_i[cluster_i] > distances_j[cluster_i]:
-                # If so we should move the instance i
                 r_j = j 
             else:
                 r_j = i
@@ -175,14 +171,18 @@ class LCVQE(BaseEstimator):
 
     def _update(self):
         for c in range(self.n_clusters):
-            members = np.where(self._labels == c)[0]
+            members = np.argwhere(self._labels == c)
+            if len(members) == 0:
+                continue
+
             coords_members = np.sum(self.X[members, :], 0)
-            coords_GMLV = np.sum(self.X[np.array(self.must_link_violations[c], dtype=np.int), :], 0)
-            coords_GCLV = np.sum(self.X[np.array(self.cannot_link_violations[c], dtype=np.int), :], 0)
+
+            coords_GMLV = np.sum(self.X[self.must_link_violations[c], :], 0)
+            coords_GCLV = np.sum(self.X[self.cannot_link_violations[c], :], 0)
             n_j = len(members) + 0.5 * len(self.cannot_link_violations[c]) + len(self.must_link_violations[c])
-            if n_j == 0:
-                n_j = 1
-            self.centroids[c, :] = (coords_members + 0.5 * coords_GMLV + coords_GCLV) / n_j
+            
+            self.centroids[c, :] = (coords_members + 0.5 * coords_GMLV + coords_GCLV)
+            self.centroids[c, :] = self.centroids[c, :] / n_j
 
     def _fit(self):
         """Fit the model to the data.
