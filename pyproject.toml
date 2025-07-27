@@ -28,6 +28,8 @@ networkx = "^3.4.2"
 jupyter = "^1.1.1"
 notebook = "^7.4.1"
 plotly = "^6.1.2"
+griffe = "^1.7.3"
+lazydocs = "^0.4.8"
 
 [tool.poetry.group.dev.dependencies]
 jupyter = "^1.0.0"

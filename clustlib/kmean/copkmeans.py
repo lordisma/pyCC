@@ -1,20 +1,4 @@
-"""KMeans estimator
-This file contains the KMeans estimator implementation.
-
-Notes
-_____
-The KMeans estimator is a clustering algorithm that aims to partition n observations into k clusters in which each
-observation belongs to the cluster with the nearest mean, serving as a prototype of the cluster. This results in a
-partitioning of the data space into Voronoi cells.
-
-Based on the Elkan's algorithm, using triangle inequality, the KMeans estimator is able to reduce the number of
-distance calculations between points and centroids, improving the performance of the algorithm.
-
-Contains
-________
-    KMeans: KMeans estimator implementation.
-"""
-
+# -*- coding: utf-8 -*-
 from typing import Sequence
 import numpy as np
 from .. import BaseEstimator
@@ -27,28 +11,20 @@ from logging import getLogger
 
 logger = getLogger(__name__)
 
-
-# FIXME: Devuelve un stimator, ajustarse a sklearn
-# https://scikit-learn.org/stable/modules/generated/sklearn.cluster.KMeans.html#sklearn.cluster.KMeans.fit
 class COPKMeans(BaseEstimator):
-    # pylint: disable=too-many-instance-attributes
-    """COPKMeans
+    """KMeans estimator is a clustering algorithm that aims to partition n observations into k clusters in which each
+    observation belongs to the cluster with the nearest mean, serving as a prototype of the cluster. This results in a
+    partitioning of the data space into Voronoi cells.
 
-    Parameters
-    __________
-    n_clusters: int, default=8
-        The number of clusters to form as well as the number of centroids to generate.
-    init: {'random', 'custom'}, default='random'
-        Method for initialization, defaults to 'random':
-            'random': choose k observations (rows) at random from data for the initial centroids.
-            'custom': use custom_initial_centroids as initial centroids.
-    max_iter: int, default=300
-        Maximum number of iterations of the k-means algorithm for a single run.
-    tol: float, default=1e-4
-        Relative tolerance with regards to Frobenius norm of the difference in the cluster centers of two consecutive
-        iterations to declare convergence.
-    custom_initial_centroids: numpy.ndarray, default=None
-        Custom initial centroids to be used in the initialization. Only used if init='custom'.
+    Attributes:
+        n_clusters (:obj:`int`, optional): The number of clusters to form as well as the number of centroids to generate.
+        init (:obj:`str`, optional): Method for initialization, defaults to 'random' choose k observations (rows) at 
+            random from data for the initial centroids. 'custom' use custom_initial_centroids as initial centroids.
+        max_iter (:obj:`int`, optional): Maximum number of iterations of the k-means algorithm for a single run.
+        tol (:obj:`float`, optional): Relative tolerance with regards to Frobenius norm of the difference in the cluster
+            centers of two consecutive iterations to declare convergence.
+        custom_initial_centroids (:obj:`numpy.ndarray`, optional): Custom initial centroids to be used in the 
+            initialization. Only used if init='custom'.
     """
 
     def __init__(
@@ -73,31 +49,23 @@ class COPKMeans(BaseEstimator):
         self.constraints = SimpleConstraints(constraints)
 
     def _initialize_bounds(self):
-        """Initialize lower and upper bounds for each instance.
-
-        This method will calculate the distance to each of the centroids in the cluster.
+        """This method will calculate the distance to each of the centroids in the cluster.
         After that, it will assign the closest centroid to each instance and apply the constraints
         to make sure that the instances respect the limitations.
 
         In case of conflict, the instance that is closer to the centroid will be kept, and the other
         will be moved to the next closest centroid.
 
-        FIXME: This method is not efficient and should be refactored.
+        Note: 
+            This method applies the constraints in a soft manner. Which means that the instances
+            might be missclassified after the initialization.
 
-        NOTE: This method applies the constraints in a soft manner. Which means that the instances
-        might be missclassified after the initialization.
+        Args:
+            dataset (ndarray): Training instances to cluster.
 
-        Parameters
-        __________
-        dataset: numpy.ndarray
-            Training instances to cluster.
-
-        Returns
-        _______
-        numpy.ndarray
-            Lower bounds for each instance.
-        numpy.ndarray
-            Upper bounds for each instance.
+        Returns:
+            numpy.ndarray: Lower bounds for each instance.
+            numpy.ndarray: Upper bounds for each instance.
         """
         logger.debug("Initializing bounds for COPKMeans")
         lower_bounds = np.zeros((self.X.shape[0], self.n_clusters))
@@ -163,18 +131,6 @@ class COPKMeans(BaseEstimator):
 
     def _fit(self):
         """Fit the model to the data.
-
-        Parameters
-        __________
-        dataset: numpy.ndarray
-            The data to cluster.
-        labels: numpy.ndarray, default=None
-            Ignored. This parameter exists only for compatibility with the sklearn API.
-
-        Returns
-        _______
-        self
-            The fitted estimator.
         """
         self._lower_bounds, self._upper_bounds = self._initialize_bounds()
 
@@ -196,14 +152,12 @@ class COPKMeans(BaseEstimator):
         """Get the valid centroids for the instance.
 
         This method checks the constraints for the instance and returns the valid centroids.
-        Parameters
-        __________
-        idx: int
-            The index of the instance to check.
-        Returns
-        _______
-        valid_centroids: numpy.ndarray
-            The valid centroids for the instance.
+        
+        Args:
+            idx(int): The index of the instance to check.
+        
+        Returns:
+            numpy.ndarray: The valid centroids for the instance.
         """
         constraints = self.constraints[idx]
         ml = np.argwhere(constraints > 0).flatten()
@@ -231,10 +185,8 @@ class COPKMeans(BaseEstimator):
 
         This method follows the Elkan's algorithm to update the labels of the instances.
 
-        Parameters
-        __________
-        idx: int
-            The index of the instance to update.
+        Args:
+            idx (int): The index of the instance to update.
         """
         instance = np.copy(self.X[idx])
         valid_centroids = self._get_centroids(idx)
@@ -295,12 +247,8 @@ class COPKMeans(BaseEstimator):
         """Get the instances belonging to each cluster and update the centroids,
         and upper and lower bounds.
 
-        FIXME: This method should be split into smaller methods
-
-        Parameters
-        __________
-        X: numpy.ndarray
-            Training instances to cluster.
+        Args:
+            X (numpy.ndarray): Training instances to cluster.
         """
         old = np.copy(self.centroids)
 
@@ -319,10 +267,8 @@ class COPKMeans(BaseEstimator):
     def _update_bounds(self):
         """Update lower and upper bounds for each instance.
 
-        Parameters
-        __________
-        X: numpy.ndarray
-            Training instances to cluster.
+        Args:
+            X (numpy.ndarray): Training instances to cluster.
         """
 
         distance = self.distance(self._delta, axis = 1)
@@ -340,19 +286,13 @@ class COPKMeans(BaseEstimator):
     def __should_check_centroid(self, centroid_index, candidate_centroid, idx):
         """Check if the candidate centroid is a valid option for the instance.
 
-        Parameters
-        __________
-        centroid_index: int
-            The current centroid index.
-        candidate_centroid: int
-            The candidate centroid index.
-        idx: int
-            The instance index.
+        Args:
+            centroid_index (int):The current centroid index.
+            candidate_centroid (int): The candidate centroid index.
+            idx (int): The instance index.
 
-        Returns
-        _______
-        bool
-            True if the candidate centroid is a valid option for the instance, False otherwise.
+        Returns:
+            boolean: True if the candidate centroid is a valid option for the instance, False otherwise.
         """
         half_distance = (
             0.5 * self._centroids_distance[centroid_index, candidate_centroid]
