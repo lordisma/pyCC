@@ -8,29 +8,19 @@ logger = logging.getLogger(__name__)
 
 
 class RDPM(BaseEstimator):
-    """RDPM
+    """RDPM clustering algorithm.
 
-    Parameters
-    __________
-    n_clusters: int, default=8
-        The number of clusters to form as well as the number of centroids to generate.
-    init: {'random', 'custom'}, default='random'
-        Method for initialization, defaults to 'random':
-    distance: {'euclidean', 'manhattan', 'cosine'}, default='euclidean'
-        The distance metric to use. See `scipy.spatial.distance` for a list of available metrics.
-    max_iter: int, default=300
-        Maximum number of iterations of the k-means algorithm for a single run.
-    tol: float, default=1e-4
-        Relative tolerance with regards to Frobenius norm of the difference in the cluster centers of two consecutive
-        iterations to declare convergence.
-    custom_initial_centroids: numpy.ndarray, default=None
-        Custom initial centroids to be used in the initialization. Only used if init='custom'.
-    limit: float, default=0.005
-        The limit of distance with the closest centroid allowed to not create another cluster
-    x0: float, default=0.001
-        The initial value of xi, which would prevent the creation of new clusters
-    rate: float, default=2.0
-        The rate of increase of xi, which would prevent the creation of new clusters
+    Args:
+        constraints (numpy.ndarray): The constraints matrix.
+        n_clusters (int, optional): The number of clusters to form. Defaults to 8.
+        init (str, optional): Initialization method ('random' or 'custom'). Defaults to 'random'.
+        distance (str, optional): Distance metric ('euclidean', 'manhattan', 'cosine'). Defaults to 'euclidean'.
+        custom_initial_centroids (numpy.ndarray, optional): Custom initial centroids. Used if init='custom'. Defaults to None.
+        tol (float, optional): Convergence tolerance. Defaults to 1e-4.
+        max_iter (int, optional): Maximum number of iterations. Defaults to 300.
+        limit (float, optional): Distance limit for creating new clusters. Defaults to 1.
+        x0 (float, optional): Initial value of xi for preventing new clusters. Defaults to 0.001.
+        rate (float, optional): Rate of increase of xi. Defaults to 2.0.
     """
 
     x0: float
@@ -40,15 +30,15 @@ class RDPM(BaseEstimator):
     def __init__(
         self,
         constraints,
-        n_clusters = 8,
-        init = "random",
-        distance = "euclidean",
-        custom_initial_centroids = None,
-        tol = 1e-4,
+        n_clusters=8,
+        init="random",
+        distance="euclidean",
+        custom_initial_centroids=None,
+        tol=1e-4,
         max_iter=300,
-        limit = 1,
-        x0 = 0.001,
-        rate = 2.0
+        limit=1,
+        x0=0.001,
+        rate=2.0
     ):
         self.n_clusters = n_clusters
         self.constraints = constraints
@@ -64,22 +54,14 @@ class RDPM(BaseEstimator):
         self.custom_initial_centroids = custom_initial_centroids
 
     def diff_alliances(self, d, c) -> int:
-        """Calculate the difference of alliances.
+        """Calculates the difference of alliances.
 
-        This method calculates how many friends and strangeres are in the centroid given as parameter.
+        Args:
+            d (int): Index of the instance to be predicted.
+            c (int): Index of the centroid to be predicted.
 
-        Parameters
-        __________
-        d: int
-            The index of the instance to be predicted
-
-        c: int
-            The index of the centroid to be predicted
-
-        Returns
-        _______
-        diff: int
-            The difference of alliances.
+        Returns:
+            int: Difference of alliances.
         """
         friends = np.argwhere(self.constraints[:, d] > 0)
         strangers = np.argwhere(self.constraints[:, d] < 0)
@@ -91,10 +73,9 @@ class RDPM(BaseEstimator):
         return friends - strangers
 
     def update(self):
-        """Override the update method.
+        """Overrides the update method.
 
-        This method overrides the update method of the BaseEstimator, in order to update the 
-        delta of the centroids and consider the empty clusters.
+        Updates the centroids and considers empty clusters.
         """
         aux = np.copy(self.centroids)
         to_remove = self._update()
@@ -106,15 +87,12 @@ class RDPM(BaseEstimator):
         self._delta = self.calculte_delta(aux)
 
     def _update(self):
-        """Update the centroids.
+        """Updates the centroids.
 
-        This method update the centroids of the clusters, also calculate the amount of empty clusters and
-        mark them to be removed.
+        Updates the centroids of the clusters and marks empty clusters for removal.
 
-        Returns
-        _______
-        to_remove: numpy.ndarray
-            The centroids to remove.
+        Returns:
+            numpy.ndarray: Array indicating centroids to remove.
         """
         to_remove = np.array([False] * self.n_clusters)
         for centroid in range(self.n_clusters):
@@ -138,12 +116,10 @@ class RDPM(BaseEstimator):
         return to_remove
 
     def __delete_centroids(self, to_remove):
-        """Delete centroids that are empty.
+        """Deletes centroids that are empty.
 
-        Parameters
-        __________
-        to_remove: numpy.ndarray
-            The centroids to remove.
+        Args:
+            to_remove (numpy.ndarray): Array indicating centroids to remove.
         """
         if np.any(to_remove):
             return
@@ -161,20 +137,14 @@ class RDPM(BaseEstimator):
         self.n_clusters = self.centroids.shape[0]
 
     def get_penalties(self, idx: int, iteration: int) -> np.ndarray:
-        """Get the label at which the instance should be assigned.
+        """Calculates penalties for assigning an instance to each centroid.
 
-        Parameters
-        __________
-        instance: int
-            The index of the instance to be predicted
+        Args:
+            idx (int): Index of the instance to be predicted.
+            iteration (int): Current iteration of the algorithm.
 
-        iteration: int
-            The iteration of the algorithm
-
-        Returns
-        _______
-        penalties: numpy.ndarray
-            The penalties of the instance to be assigned to each centroid.
+        Returns:
+            numpy.ndarray: Penalties for assigning the instance to each centroid.
         """
         instance = self.X[idx]
 
@@ -187,6 +157,7 @@ class RDPM(BaseEstimator):
               
 
     def _fit(self):
+        """Fits the RDPM model to the data."""
         logger.debug("Fitting RDPM model")
 
         iteration = 0

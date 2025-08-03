@@ -22,9 +22,19 @@ theme:
 
 nav:
   - Home: index.md
-  - Docs: 
+  - References: 
     - KMeans: 
       - Overview: api/kmean/index.md
       - COPKMeans: api/kmean/copkmeans.md
       - RDPMean: api/kmean/rdpmean.md
+    - Local Search:
+      - Overview: api/sin/index.md
+      - DILS: api/sin/dils.md
+    - Nonparametric:
+      - Overview: api/nonparam/index.md
+      - TVClust: api/nonparam/tvclust.md
+    - Genetic Algorithms:
+      - Overview: api/gac/index.md
+      - Biased Random-Key Genetic Algorithm: api/gac/brkga.md
+      - Shade: api/gac/shade.md
   - Architecture: arch.md
