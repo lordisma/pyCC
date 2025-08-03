@@ -11,7 +11,7 @@ class ElkanKMeans(KMeans):
 
     _tolerance: float
 
-    def _update_bounds(self):
+    def update_bounds(self):
         """Initialize lower and upper bounds for each instance.
 
         This method will calculate the distance to each of the centroids in the cluster.
@@ -63,7 +63,7 @@ class ElkanKMeans(KMeans):
             abs(np.sum((self._delta_centroid / previous_centroids) * 100))
             < self._tolerance
         ):
-            self._update_bounds()
+            self.update_bounds()
             return
 
         for i in range(self._centroids.shape[0]):

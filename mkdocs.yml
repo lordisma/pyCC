@@ -1,8 +1,30 @@
 site_name: Constrained Clustering
 
 plugins:
-- mkdocstrings
-- autorefs
+  - search
+  - mkdocstrings:   # Auto-generate API reference from docstrings
+      handlers:
+        python:
+          rendering:
+            show_source: true
+
+markdown_extensions:
+  - pymdownx.arithmatex:
+      generic: true
+
+extra_javascript:
+  - javascripts/config.js
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
 
 theme:
   name: material
+
+nav:
+  - Home: index.md
+  - Docs: 
+    - KMeans: 
+      - Overview: api/kmean/index.md
+      - COPKMeans: api/kmean/copkmeans.md
+      - RDPMean: api/kmean/rdpmean.md
+  - Architecture: arch.md

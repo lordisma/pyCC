@@ -17,13 +17,13 @@ class COPKMeans(BaseEstimator):
     partitioning of the data space into Voronoi cells.
 
     Attributes:
-        n_clusters (:obj:`int`, optional): The number of clusters to form as well as the number of centroids to generate.
-        init (:obj:`str`, optional): Method for initialization, defaults to 'random' choose k observations (rows) at 
+        n_clusters (int, optional): The number of clusters to form as well as the number of centroids to generate.
+        init (:str, optional): Method for initialization, defaults to 'random' choose k observations (rows) at 
             random from data for the initial centroids. 'custom' use custom_initial_centroids as initial centroids.
-        max_iter (:obj:`int`, optional): Maximum number of iterations of the k-means algorithm for a single run.
-        tol (:obj:`float`, optional): Relative tolerance with regards to Frobenius norm of the difference in the cluster
+        max_iter (int, optional): Maximum number of iterations of the k-means algorithm for a single run.
+        tol (float, optional): Relative tolerance with regards to Frobenius norm of the difference in the cluster
             centers of two consecutive iterations to declare convergence.
-        custom_initial_centroids (:obj:`numpy.ndarray`, optional): Custom initial centroids to be used in the 
+        custom_initial_centroids (numpy.ndarray, optional): Custom initial centroids to be used in the 
             initialization. Only used if init='custom'.
     """
 
@@ -48,7 +48,7 @@ class COPKMeans(BaseEstimator):
         self._labels = None
         self.constraints = SimpleConstraints(constraints)
 
-    def _initialize_bounds(self):
+    def initialize_bounds(self):
         """This method will calculate the distance to each of the centroids in the cluster.
         After that, it will assign the closest centroid to each instance and apply the constraints
         to make sure that the instances respect the limitations.
@@ -132,7 +132,7 @@ class COPKMeans(BaseEstimator):
     def _fit(self):
         """Fit the model to the data.
         """
-        self._lower_bounds, self._upper_bounds = self._initialize_bounds()
+        self._lower_bounds, self._upper_bounds = self.initialize_bounds()
 
         logger.debug("Starting the iterations for COPKMeans")
 
@@ -148,7 +148,7 @@ class COPKMeans(BaseEstimator):
 
         logger.debug(f"COPKMeans finished after {time() - start:.2f}")
     
-    def _get_centroids(self, idx):
+    def get_centroids(self, idx):
         """Get the valid centroids for the instance.
 
         This method checks the constraints for the instance and returns the valid centroids.
@@ -180,7 +180,7 @@ class COPKMeans(BaseEstimator):
         
         return np.arange(self.n_clusters)
 
-    def _update_label(self, idx):
+    def update_label(self, idx):
         """Update the instances labels.
 
         This method follows the Elkan's algorithm to update the labels of the instances.
@@ -189,7 +189,7 @@ class COPKMeans(BaseEstimator):
             idx (int): The index of the instance to update.
         """
         instance = np.copy(self.X[idx])
-        valid_centroids = self._get_centroids(idx)
+        valid_centroids = self.get_centroids(idx)
 
         if len(valid_centroids) == 0:
             raise ValueError("Invalid set of centroids")
@@ -225,7 +225,7 @@ class COPKMeans(BaseEstimator):
                 current = self.centroids[self._labels[idx]]
 
                 # Check if the current distance must be updated
-                if self.__should_check_centroid(self._labels[idx], centroid_index, idx):
+                if self.should_check_centroid(self._labels[idx], centroid_index, idx):
                     logger.debug(
                         f"Checking instance {idx} with centroid {centroid_index} "
                         f"and current centroid {self._labels[idx]}"
@@ -262,9 +262,9 @@ class COPKMeans(BaseEstimator):
         if self._delta is None:
             self._delta = self.calculte_delta(old)
 
-        self._update_bounds()
+        self.update_bounds()
 
-    def _update_bounds(self):
+    def update_bounds(self):
         """Update lower and upper bounds for each instance.
 
         Args:
@@ -281,9 +281,9 @@ class COPKMeans(BaseEstimator):
             self._lower_bounds[members, :] -= distance[centroids_index]
 
         for idx in range(self.X.shape[0]):
-            self._update_label(idx)
+            self.update_label(idx)
 
-    def __should_check_centroid(self, centroid_index, candidate_centroid, idx):
+    def should_check_centroid(self, centroid_index, candidate_centroid, idx):
         """Check if the candidate centroid is a valid option for the instance.
 
         Args:
