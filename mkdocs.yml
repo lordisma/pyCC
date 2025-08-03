@@ -2,6 +2,7 @@ site_name: Constrained Clustering
 
 plugins:
   - search
+  - mermaid2
   - mkdocstrings:   # Auto-generate API reference from docstrings
       handlers:
         python:
@@ -22,7 +23,8 @@ theme:
 
 nav:
   - Home: index.md
-  - References: 
+  - References:
+    - Base: api/base.md
     - KMeans: 
       - Overview: api/kmean/index.md
       - COPKMeans: api/kmean/copkmeans.md

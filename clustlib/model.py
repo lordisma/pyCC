@@ -1,11 +1,8 @@
 """Model base
 This module contains a BaseEstimator which provides the base's class for the rest of the estimator
 
-Note
-----
 There is no intention to use this class directly, but to be inherited by other classes. Implementation is based on
 scikit-learn's BaseEstimator in order to facilitate the integration with the library.
-
 """
 
 from abc import ABC
@@ -25,16 +22,12 @@ class BaseEstimator(ABC, SklearnBaseEstimator):
     """
     Base class for estimators in the clustlib package.
 
-    Attributes
-    __________
+    Attributes:
+        labels_ (numpy.ndarray): Labels of the dataset.
 
-    labels_: numpy.ndarray
-        Labels of the dataset
-
-    Notes
-    -----
-    All estimators should specify all the parameters that can be set at the class level in their ``__init__`` as
-    explicit keyword arguments (no ``*args`` or ``**kwargs``).
+    Notes:
+        All estimators should specify all the parameters that can be set at the class level in their `__init__` 
+        as explicit keyword arguments (no `*args` or `**kwargs`).
     """
     centroids: np.ndarray = None
     init: InitCentroid
@@ -70,62 +63,55 @@ class BaseEstimator(ABC, SklearnBaseEstimator):
         return self._fit()
 
     def _fit(self):
-        """Fit the model to the data.
+        """ Fit the model to the data.
 
-        Parameters
-        __________
-        dataset: numpy.ndarray
-            The data to cluster.
-        labels: numpy.ndarray, default=None
-            Ignored. This parameter exists only for compatibility with the sklearn API.
+        Args:
+            dataset (numpy.ndarray): The data to cluster.
+            labels (numpy.ndarray, optional): Ignored. This parameter exists only for compatibility with the sklearn API.
 
-        Returns
-        _______
-        self
-            The fitted estimator.
+        Returns:
+            BaseEstimator: The fitted estimator.
         """
         raise NotImplementedError
     
     def predict(self, x: np.array) -> int:
-        """Check if the labels for the better fit of the instance and predict the
-        data based on that.
+        """
+        Predict the cluster index for a given instance.
 
-        Parameters
-        ____________
-        x: numpy.array
-            The instance to be predicted
+        Args:
+            x (numpy.ndarray): The instance to be predicted.
 
-        Returns
-        ________
-        cluster_index: int
-            The index of the cluster at which the instance was assigned
+        Returns:
+            int: The index of the cluster to which the instance is assigned.
         """
         return np.argmin(np.linalg.norm(self.centroids - x))
     
     def calculte_delta(self, x: np.ndarray) -> np.ndarray:
-        """Calculate the difference between the new and old centroids.
+        """
+        Calculate the difference between the new and old centroids.
 
-        This method is used to determine when the algorithm has reached an end.
+        This method is used to determine when the algorithm has converged.
 
-        Parameters
-        __________
-        x: numpy.array
-            The old centroids
+        Args:
+            x (numpy.ndarray): The old centroids.
+
+        Returns:
+            numpy.ndarray: The absolute difference between the new and old centroids.
         """
         return np.abs(self.centroids - x)
     
     def update(self):
-        """Update the centroids of the clusters
+        """
+        Update the centroids of the clusters.
 
-        This method will call the _update method to update the centroids of the clusters.
-        It will also update the _delta_centroid attribute with the difference between the new and old centroids.
-        The _delta attribute is a numpy array with the same shape as the centroids and used to determine
-        when the algorithm has reached an end.
+        This method calls the `_update` method to update the centroids of the clusters. It also updates the `_delta` 
+        attribute with the difference between the new and old centroids. The `_delta` attribute is a numpy array 
+        with the same shape as the centroids and is used to determine when the algorithm has converged.
         """
         aux = np.copy(self.centroids)
         self._update()
         self._delta = self.calculte_delta(aux)
-    
+
     def _update(self):
         """Update the centroids of the clusters.
 
@@ -134,36 +120,25 @@ class BaseEstimator(ABC, SklearnBaseEstimator):
         raise NotImplementedError
 
     def _convergence(self):
-        """Check convergence of the algorithm.
+        """
+        Check convergence of the algorithm.
 
-        Returns
-        _______
-        bool
-            True if the algorithm has converged, False otherwise.
+        Returns:
+            bool: True if the algorithm has converged, False otherwise.
         """
         if self._delta is None:
             logger.debug("Delta is None, convergence cannot be checked.")
             return False
-        
-        improvement = np.linalg.norm(self._delta, axis=0)
-        
-        logger.debug(f"Checking convergence with delta: {improvement}")
-        logger.debug(f"Tolerance: {self.tol}")
-        
-        return np.all(improvement <= self.tol)
     
     def stop_criteria(self, iteration) -> bool:
-        """Check if the algorithm has reached the maximum number of iterations.
+        """
+        Check if the algorithm has reached the stopping criteria.
 
-        Parameters
-        __________
-        iteration: int
-            The current iteration of the algorithm.
+        Args:
+            iteration (int): The current iteration of the algorithm.
 
-        Returns
-        _______
-        bool
-            True if the algorithm has reached the maximum number of iterations, False otherwise.
+        Returns:
+            bool: True if the algorithm has reached the stopping criteria, False otherwise.
         """
         if self._convergence():
             logger.debug("Convergence reached, stopping criteria met.")

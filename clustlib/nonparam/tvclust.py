@@ -13,73 +13,48 @@ class TVClust(BaseEstimator):
     TVClust: A constrained variational Bayesian clustering algorithm based on a 
     truncated Dirichlet Process mixture model (TVClust).
 
-    Attributes
-    ----------
-    cov_inverse : np.ndarray
-        The scale matrix of the Wishart distribution associated with each cluster.
-
-        Shape: (n_clusters, p, p), where:
-            - n_clusters is the number of mixture components (clusters).
-            - p is the dimensionality of the data.
-
-        Interpretation:
-            For each cluster k, `W[k]` defines the scale matrix of the Wishart distribution 
+    Attributes:
+        cov_inverse (np.ndarray): The scale matrix of the Wishart distribution associated with each cluster.
+            Shape: (n_clusters, p, p), where:
+                - n_clusters is the number of mixture components (clusters).
+                - p is the dimensionality of the data.
+            Interpretation: For each cluster k, `W[k]` defines the scale matrix of the Wishart distribution 
             used as a prior (or variational posterior) over the precision matrix (inverse covariance) 
             of the Gaussian component.
 
-    responsabilities : np.ndarray
-        The responsibilities of each cluster for each instance.
+        responsabilities (np.ndarray): The responsibilities of each cluster for each instance.
+            Shape: (n_instances, n_clusters), where:
+                - n_instances is the number of data points.
+                - n_clusters is the number of mixture components (clusters).
+            Interpretation: Each entry `responsabilities[i, k]` represents the probability that instance `i` 
+            belongs to cluster `k`.
 
-        Shape: (n_instances, n_clusters), where:
-            - n_instances is the number of data points.
-            - n_clusters is the number of mixture components (clusters).
-
-        Interpretation:
-            Each entry `responsabilities[i, k]` represents the probability that instance `i` belongs to cluster `k`.
-    
-    mu : np.ndarray
-        The mean vector of the Gaussian component for each cluster.
-
-        Shape: (n_clusters, p) where:
-            - n_clusters is the number of mixture components (clusters).
-            - p is the dimensionality of the data.
-
-        Interpretation:
-            For cluster k, `mu[k]` represents the expected location of the data in p-dimensional space.
+        mu (np.ndarray): The mean vector of the Gaussian component for each cluster.
+            Shape: (n_clusters, p) where:
+                - n_clusters is the number of mixture components (clusters).
+                - p is the dimensionality of the data.
+            Interpretation: For cluster k, `mu[k]` represents the expected location of the data in p-dimensional space.
             Updated using a precision-weighted average between prior and data responsibilities.
 
-    nu : np.ndarray
-        The degrees of freedom of the Wishart distribution for each cluster.
-
-        Shape: (n_clusters,) where:
-            - n_clusters is the number of mixture components (clusters).
-
-        Interpretation:
-            Controls the expected variability of the precision matrix.
+        nu (np.ndarray): The degrees of freedom of the Wishart distribution for each cluster.
+            Shape: (n_clusters,) where:
+                - n_clusters is the number of mixture components (clusters).
+            Interpretation: Controls the expected variability of the precision matrix.
             Larger `nu[k]` implies more confidence (tighter distribution) around `cov_inverse[k]`.
 
-    beta : np.ndarray
-        The scaling parameter of the Gaussian mean distribution for each cluster.
-
-        Shape: (n_clusters,) where:
-            - n_clusters is the number of mixture components (clusters).
-
-        Interpretation:
-            Acts as a pseudo-count indicating the strength of belief in the mean `mu[k]`.
+        beta (np.ndarray): The scaling parameter of the Gaussian mean distribution for each cluster.
+            Shape: (n_clusters,) where:
+                - n_clusters is the number of mixture components (clusters).
+            Interpretation: Acts as a pseudo-count indicating the strength of belief in the mean `mu[k]`.
             Affects the variance of the mean estimate; larger `beta[k]` implies lower variance.
 
-    gamma : np.ndarray
-        The variational parameters of the stick-breaking Beta distributions over cluster weights.
-
-        Shape: (n_clusters - 1, 2) where:
-            - n_clusters is the number of mixture components (clusters).
-            - Each row corresponds to a Beta distribution parameterized by two values (alpha, beta).
-
-        Interpretation:
-            Each row `gamma[k] = [a, b]` encodes the Beta distribution for the stick-breaking variable `v_k`,
-            which defines the prior weight of cluster k. These parameters are used to construct the
+        gamma (np.ndarray): The variational parameters of the stick-breaking Beta distributions over cluster weights.
+            Shape: (n_clusters - 1, 2) where:
+                - n_clusters is the number of mixture components (clusters).
+                - Each row corresponds to a Beta distribution parameterized by two values (alpha, beta).
+            Interpretation: Each row `gamma[k] = [a, b]` encodes the Beta distribution for the stick-breaking 
+            variable `v_k`, which defines the prior weight of cluster k. These parameters are used to construct the
             variational approximation of the Dirichlet Process.
-
     """
     # Concentration of the clusters
     __alpha_0: float = 1.2
