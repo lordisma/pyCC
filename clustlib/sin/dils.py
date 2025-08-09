@@ -20,6 +20,7 @@ class DILS(BaseEstimator):
         probability=0.2,
         similarity_threshold=0.5,
         mutation_size=10,
+        local_search_max_iter=10
     ):
         self.init = init
         self.distance = match_distance(distance)
@@ -33,6 +34,11 @@ class DILS(BaseEstimator):
         self._threshold = similarity_threshold
         self._mutation_size = mutation_size
         self.max_iter = max_iter
+        self.local_search_max_iter = local_search_max_iter
+
+        self.best = None
+        self.worst = None
+        self._fitness = None
 
     def initialize(self):
         """
@@ -65,11 +71,20 @@ class DILS(BaseEstimator):
         result = 0
 
         if self.n_clusters == 1:
-            return pdist(self.X, metric=self.distance).mean()
+            result = pdist(self.X, metric = lambda u, v: self.distance(u - v))
+            return result.mean()
 
-        for j in labels.unique():
-            if np.any(labels == j):
-                result += pdist(self.X[labels == j, :], metric=self.distance).mean()
+        if len(labels) != self.X.shape[0]:
+            raise ValueError("Labels must match the number of data points.")
+
+        for j in np.unique(labels):
+            if self.X[labels == j, :].shape[0] < 2:
+                # If there is only one point in the cluster, distance is zero
+                result += 0
+                continue
+
+            pdist_matrix = pdist(self.X[labels == j, :], metric = lambda u, v: self.distance(v - u)) 
+            result += pdist_matrix.mean()
 
         return result / self.n_clusters if self.n_clusters > 0 else 0.0
 
@@ -107,7 +122,7 @@ class DILS(BaseEstimator):
         for x in range(self.X.shape[0]):
             cl_constraints = np.argwhere(self.constraints[x] < 0).flatten()
 
-            infeasability += np.sum(cromosome[cl_constraints] != cromosome[x])
+            infeasability += np.sum(cromosome[cl_constraints] == cromosome[x])
 
         return infeasability // 2
 
@@ -142,8 +157,8 @@ class DILS(BaseEstimator):
         """
         n = self.X.shape[0]
         segment_start = np.random.randint(n)
-        segment_end = (segment_start + self._segment_size) % n
-        new_segment = np.random.randint(0, self.n_clusters, self._segment_size)
+        segment_end = (segment_start + self._mutation_size) % n
+        new_segment = np.random.randint(0, self.n_clusters, self._mutation_size)
 
         if segment_start < segment_end:
             chromosome[segment_start:segment_end] = new_segment
@@ -171,13 +186,12 @@ class DILS(BaseEstimator):
         new_cromosome[v] = parent2[v]
         return new_cromosome
 
-    def local_search(self, chromosome, max_iter):
+    def local_search(self, chromosome):
         """
         Perform local search on a chromosome.
 
         Args:
             chromosome (numpy.ndarray): The chromosome to improve.
-            max_iter (int): The maximum number of iterations.
 
         Returns:
             numpy.ndarray: The improved chromosome.
@@ -188,7 +202,7 @@ class DILS(BaseEstimator):
 
         random.shuffle(index_list)
 
-        for index in index_list[:max_iter]:
+        for index in index_list[:self.local_search_max_iter]:
             original_label = chromosome[index]
             labels = np.arange(self.n_clusters)
 
@@ -207,10 +221,47 @@ class DILS(BaseEstimator):
                 else:
                     chromosome[index] = original_label
 
-            if iterations == max_iter:
+            if iterations == self.local_search_max_iter:
                 break
 
         return chromosome
+    
+    def _update(self):
+        new_chromosome = self.crossover(self.best, self.worst)
+        mutant = self.mutation(new_chromosome)
+        improved_mutant = self.local_search(mutant)
+        improved_mutant_fitness = self.get_single_fitness(improved_mutant)
+
+        if improved_mutant_fitness < np.max(self._fitness):
+            if improved_mutant_fitness < np.min(self._fitness):
+                self.worst = self.best
+                self.best = improved_mutant
+            else:
+                self.worst = improved_mutant
+            self._fitness[np.argmax(self._fitness)] = improved_mutant_fitness
+
+        threshold = np.min(self._fitness) * self._threshold
+        if (np.max(self._fitness) - np.min(self._fitness)) > threshold:
+            worst = np.argmax(self._fitness)
+            self.worst = np.random.randint(0, self.n_clusters, self.X.shape[0])
+            self._fitness[worst] = self.get_single_fitness(self.worst)
+
+        self._labels = self.best
+        self.calculate_centroids()
+    
+    def calculate_centroids(self):
+        """
+        Calculate the centroids of the clusters based on the current labels.
+        
+        Returns:
+            numpy.ndarray: The centroids of the clusters.
+        """
+        centroids = np.zeros((self.n_clusters, self.X.shape[1]))
+
+        for i in range(self.n_clusters):
+            centroids[i] = np.mean(self.X[self._labels == i, :], axis=0)
+
+        self.centroids = centroids
 
     def _fit(self):
         """
@@ -223,24 +274,7 @@ class DILS(BaseEstimator):
         iteration = 0
 
         while not self.stop_criteria(iteration):
-            new_chromosome = self.crossover(
-                self.best, self.worst
-            )
-
-            mutant = self.mutation(new_chromosome)
-            improved_mutant = self.local_search(mutant)
-            improved_mutant_fitness = self.get_single_fitness(improved_mutant)
-
-            if improved_mutant_fitness < np.max(self._fitness):
-                self.worst = improved_mutant
-                self._fitness[np.argmax(self._fitness)] = improved_mutant_fitness
-
-            threshold = np.min(self._fitness) * self._threshold
-
-            if (np.max(self._fitness) - np.min(self._fitness)) > threshold:
-                worst = np.argmax(self._fitness)
-                self.worst = np.random.randint(0, self.n_clusters, self.X.shape[0])
-                self._fitness[worst] = self.get_single_fitness(self.worst)
+            self.update()
             iteration += 1
 
-        return self.best
+        return self._labels

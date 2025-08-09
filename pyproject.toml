@@ -31,6 +31,7 @@ plotly = "^6.1.2"
 griffe = "^1.7.3"
 lazydocs = "^0.4.8"
 mkdocs-mermaid2-plugin = "^1.2.1"
+mock = "^5.2.0"
 
 [tool.poetry.group.dev.dependencies]
 jupyter = "^1.0.0"

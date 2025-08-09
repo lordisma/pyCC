@@ -84,7 +84,7 @@ class BaseEstimator(ABC, SklearnBaseEstimator):
         Returns:
             int: The index of the cluster to which the instance is assigned.
         """
-        return np.argmin(np.linalg.norm(self.centroids - x))
+        return np.argmin(np.linalg.norm(x[:, np.newaxis] - self.centroids, axis=2), axis=1)
     
     def calculte_delta(self, x: np.ndarray) -> np.ndarray:
         """

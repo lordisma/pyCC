@@ -81,8 +81,8 @@ class RDPM(BaseEstimator):
         to_remove = self._update()
 
         if np.any(to_remove):
-            self.__delete_centroids(to_remove)
-            np.delete(aux, to_remove, axis=0)
+            self._delete_centroids(to_remove)
+            aux = aux[~to_remove]
 
         self._delta = self.calculte_delta(aux)
 
@@ -115,13 +115,13 @@ class RDPM(BaseEstimator):
 
         return to_remove
 
-    def __delete_centroids(self, to_remove):
+    def _delete_centroids(self, to_remove):
         """Deletes centroids that are empty.
 
         Args:
             to_remove (numpy.ndarray): Array indicating centroids to remove.
         """
-        if np.any(to_remove):
+        if not np.any(to_remove):
             return
         
         removed = 0
@@ -133,7 +133,7 @@ class RDPM(BaseEstimator):
 
             self._labels[np.where(self._labels == centroid)] = centroid - removed
         
-        self.centroids = self.centroids[~to_remove]
+        self.centroids = self.centroids[~to_remove] 
         self.n_clusters = self.centroids.shape[0]
 
     def get_penalties(self, idx: int, iteration: int) -> np.ndarray:
