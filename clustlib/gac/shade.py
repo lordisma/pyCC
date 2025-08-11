@@ -22,6 +22,7 @@ class ShadeCC(GeneticClustering):
     """
 
     solution_archive: np.ndarray
+    percentage_best: float = 0.2
 
     def __init__(
         self,
@@ -32,6 +33,7 @@ class ShadeCC(GeneticClustering):
         custom_initial_centroids=None,
         constraints: Sequence[Sequence] = None,
         population_size=20,
+        memory_size=20,
     ):
         """Inicializa el algoritmo SHADE para clustering con restricciones.
 
@@ -52,57 +54,97 @@ class ShadeCC(GeneticClustering):
         self.tol = tol
         self.custom_initial_centroids = custom_initial_centroids
         self.centroids = None
-        self.constraints = ConstraintMatrix(constraints)
+        self.constraints = constraints
         self.population_size = population_size
+        self.memory_size = self.memory_size
+        self.elite_size = np.ceil(self.population_size * self.percentage_best).astype(int)
         self.solution_archive = None
+        self._dim = self.constraints.shape[0]
 
-    def select_parents(self, fitness, num_parents, ga_instance):
-        """Selecciona padres desde la población y el archivo externo.
-
+    @staticmethod
+    def randint(low, high=None, size=None, exclude=None):
+        """Genera un número entero aleatorio, excluyendo ciertos valores.
+        
         Args:
-            fitness (np.ndarray): Fitness de cada individuo en la población.
-            num_parents (int): Número de padres requeridos.
-            ga_instance (GeneticClustering): Instancia de la clase genética.
+            low (int): Límite inferior del rango.
+            high (int, optional): Límite superior del rango.
+            size (int, optional): Número de valores a generar.
+            exclude (Sequence[int], optional): Valores a excluir del rango.
 
         Returns:
-            Tuple[np.ndarray, np.ndarray]: Tupla con los padres seleccionados y sus respectivos fitness.
+            np.ndarray: Array de enteros aleatorios excluyendo los valores especificados.
         """
-        fitness_sorted = np.argsort(fitness)
-        idx_element = np.random.randint(0, self.population_size)
-        x_i = fitness_sorted[idx_element]
+        if exclude is None:
+            return np.random.randint(low, high, size)
+        else:
+            return np.random.choice(
+                [i for i in range(low, high) if i not in exclude], size=size
+            )
+        
+    def _convergence(self):
+        raise NotImplementedError("SHADE does not implement _convergence method directly. Use stop_criteria method instead.")
 
-        percentange_best = np.random.uniform(1.0 / self.population_size, 0.2)
-        idx_best = np.random.randint(
-            0, np.ceil(self.population_size * percentange_best)
+    def _fit(self):
+        self.create_population()
+        self.create_archive()
+        
+        iteration = 0
+        while not self.stop_criteria(iteration):
+            self.update()
+            iteration += 1
+
+        return self
+    
+    def create_population(self):
+        super().create_population()
+
+        self._next_population = np.zeros(self.population.shape)
+        self._next_population_fitness = np.zeros(self.population_size)
+
+    def create_archive(self):
+        """Inicializa el archivo externo de soluciones."""
+        if self.solution_archive is None:
+            self.solution_archive = np.zeros((0, self._dim))
+        else:
+            self.solution_archive = np.vstack((self.solution_archive, np.zeros((0, self._dim))))
+
+        self._memory_CR = np.full(self.memory_size, 0.5)
+        self._memory_F = np.full(self.memory_size, 0.5)
+
+    def get_instances(self, parents_idx):
+        """Obtiene las instancias de la población y el archivo externo.
+        
+        Args:
+            parents_idx (np.ndarray): Índices de los padres seleccionados.
+        Returns:
+            Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]: Instancias de la población y del archivo externo.
+        """
+        (idx, best, r1, r2) = parents_idx
+
+        return (
+            self.population[idx],
+            self._population[best],
+            self._population[r1],
+            self._population[r2] if r2 < self.population_size else self.solution_archive[r2 - self.population_size]
         )
-        x_best = fitness_sorted[idx_best]
 
-        r1_idx = np.random.randint(0, self.population_size)
-        while r1_idx == idx_best:
-            r1_idx = np.random.randint(0, self.population_size)
-        x_r1 = fitness_sorted[r1_idx]
+    def select_parents(self):
+        """Selecciona padres desde la población y el archivo externo.
+
+        Returns:
+            np.ndarray: Index to the parents selected.
+
+        TODO:
+            - Make sure that the fitness is calculated before calling this method.
+        """
+        idx = self.randint(0, self.population_size)
+        idx_best = self.randint(0, self.elite_size, exclude=[idx])
+        idx_r1 = self.randint(0, self.population_size, exclude=[idx_best, idx])
 
         archive_size = self.solution_archive.shape[0]
-        r2_idx = np.random.randint(0, self.population_size + archive_size)
-        while r2_idx == r1_idx:
-            r2_idx = np.random.randint(0, self.population_size + archive_size)
+        idx_r2 = self.randint(0, self.population_size + archive_size, exclude=[idx_best, idx_r1, idx])
 
-        population = ga_instance.population
-        if r2_idx < self.population_size:
-            x_r2 = fitness_sorted[r2_idx]
-            return population[[x_best, x_r1, x_r2]].copy(), np.array(
-                [fitness[x_best], fitness[x_r1], fitness[x_r2]]
-            )
-        else:
-            r2_idx -= self.population_size
-            if r2_idx > self.solution_archive.shape[0] - 1:
-                r2_idx = np.random.randint(0, self.solution_archive.shape[0])
-
-            archive_sol = self.solution_archive[r2_idx]
-            fitness_archive = self.fitness(ga_instance, archive_sol, r2_idx)
-            return np.ndarray(
-                [population[x_i], population[x_best], population[x_r1], archive_sol]
-            ), np.array([fitness[x_i], fitness[x_best], fitness[x_r1], fitness_archive])
+        return np.array([idx, idx_best, idx_r1, idx_r2])
 
     def crossover(self, parents, f_i, cr_i):
         """Realiza cruce diferencial entre múltiples padres.
@@ -115,14 +157,12 @@ class ShadeCC(GeneticClustering):
         Returns:
             np.ndarray: Cromosoma mutante generado.
         """
-        element, best, r1, r2 = parents
+        element, best, r1, r2 = self.get_instances(parents)
         mutant = element + f_i * (best - element) + f_i * (r1 - r2)
         mutant = np.clip(mutant, 0, 1)
 
-        cross_points_1 = np.random.rand(len(element)) <= cr_i
-        cross_points_2 = np.array(range(len(element))) == np.random.randint(
-            len(element), size=len(element)
-        )
+        cross_points_1 = np.random.rand(self._dim) <= cr_i
+        cross_points_2 = np.random.rand(self._dim) < (1 / self._dim)
         cross_points = np.logical_or(cross_points_1, cross_points_2)
 
         return np.where(cross_points, mutant, element)
@@ -146,13 +186,15 @@ class ShadeCC(GeneticClustering):
         self._s_cr = np.append(self._s_cr, cr_i)
         self.fitness_delta = np.append(self.fitness_delta, delta_fitness)
 
-    def update_adaptive(self, index):
+    def update_adaptive(self):
         """Actualiza los historiales H_CR y H_F con medias ponderadas."""
-        w_k = self.fitness_delta / self.fitness_delta.sum()
-        mean_wa = (w_k * self._s_cr).sum()
-        self._h_record_CR = np.append(self._h_record_CR, mean_wa)
+        k = np.random.randint(0, self.memory_size)
+        mean_wa = np.average(self.fitness_delta, weights=self._s_cr)
+        self._memory_CR[k] = np.clip(mean_wa, 0.0, 1.0)
+
+        w_k = self.fitness_delta / np.sum(self.fitness_delta)
         mean_wl = (w_k * (self._sf**2)).sum() / (w_k * self._sf).sum()
-        self._h_record_F = np.append(self._h_record_CR, mean_wl)
+        self._memory_F[k] = np.clip(mean_wl, a_max=1.0)
 
     def create_adaptive_parameter(self):
         """Genera nuevos parámetros CR y F adaptativos.
@@ -160,47 +202,33 @@ class ShadeCC(GeneticClustering):
         Returns:
             Tuple[float, float]: Par de (CR, F) adaptados.
         """
-        r_i = np.random.randint(0, self.population_size)
+        r_i = np.random.randint(0, self.memory_size)
         while (
             f_i := scipy.stats.cauchy.rvs(
-                loc=self._h_record_F[r_i], scale=0.1
+                loc=self._memory_F[r_i], scale=0.1
             )
         ) <= 0 and f_i > 1.0:
             continue
+
         while (
-            cr_i := np.random.normal(self._h_record_CR[r_i], 0.1)
+            cr_i := np.random.normal(self._memory_CR[r_i], 0.1)
         ) <= 0 and cr_i > 1.0:
             continue
+
         return cr_i, f_i
 
-    def mutation(self, current_idx):
+    def mutation(self):
         """Genera mutación sobre el individuo actual.
-
-        Args:
-            current_idx (int): Índice del individuo actual.
 
         Returns:
             Tuple[np.ndarray, float, float]: Mutante, cr_i y f_i generados.
         """
-        parents, fitness_parents = self.select_parents(
-            self._population_fitness, 3, self.ga_instance
-        )
+        parents = self.select_parents()
         cr_i, f_i = self.create_adaptive_parameter()
         mutant = self.crossover(parents, f_i, cr_i)
         return mutant, cr_i, f_i
-
-    def create_population(self):
-        """Inicializa la población y los buffers adaptativos."""
-        X_size = self.dataset.shape[0]
-        self._external_archive = np.zeros((self.population_size, X_size))
-        self._population = np.random.rand(self.population_size, X_size)
-        self._h_record_CR = np.full(self.population_size, 0.5)
-        self._h_record_F = np.full(self.population_size, 0.5)
-        self._population_fitness = np.zeros(self.population_size)
-        self._next_population = np.zeros(self.population.shape)
-        self._next_population_fitness = np.zeros(self.population_size)
-
-    def fit(self, X, y=None, logger=None):
+        
+    def _update(self):
         """Entrena el algoritmo SHADE sobre los datos.
 
         Args:
@@ -211,39 +239,29 @@ class ShadeCC(GeneticClustering):
         Returns:
             ShadeCC: Instancia entrenada del modelo.
         """
-        num_genes = X.shape[0]
-        self.dataset = X
-        self.solution_archive = np.zeros((0, num_genes))
-        self.create_population()
-        self.calculate_fitness()
+        self._s_cr = np.zeros((0, 0))
+        self._sf = np.zeros((0, 0))
+        self.fitness_delta = np.zeros((0, 0))
 
-        for iteration in range(self.max_iter):
-            self._s_cr = np.zeros((0, 0))
-            self._sf = np.zeros((0, 0))
-            self.fitness_delta = np.zeros((0, 0))
+        for current_element in range(self.population_size):
+            mutant, cr_i, f_i = self.mutation(current_element)
+            mutant_fitness = self.fitness(mutant)
+            current_fitness = self._population_fitness[current_element]
 
-            for current_element in range(self.population_size):
-                mutant, cr_i, f_i = self.mutation(current_element)
-                mutant_fitness = self.fitness(mutant)
-                current_fitness = self._population_fitness[current_element]
+            if mutant_fitness < current_fitness:
+                self._next_population[current_element] = mutant
+                self._next_population_fitness[current_element] = mutant_fitness
+                self.save_adaptive(current_fitness - mutant_fitness, cr_i, f_i)
+            else:
+                self._next_population[current_element] = self._population[current_element]
+                self._next_population_fitness[current_element] = current_fitness
 
-                if mutant_fitness < current_fitness:
-                    self._next_population[current_element] = mutant
-                    self._next_population_fitness[current_element] = mutant_fitness
-                    self.save_adaptive(current_fitness - mutant_fitness, cr_i, f_i)
-                else:
-                    self._next_population[current_element] = self._population[
-                        current_element
-                    ]
-                    self._next_population_fitness[current_element] = current_fitness
+        self._population = self._next_population
+        self._population_fitness = self._next_population_fitness
+        self._population_fitness_sorted = np.argsort(current_fitness)
 
-            self._population = self._next_population
-            self._population_fitness = self._next_population_fitness
-            self._population_fitness_sorted = np.argsort(current_fitness)
+        if len(self._s_cr) > 0 and len(self._sf) > 0:
+            self.update_adaptive()
 
-            if len(self._s_cr) > 0 and len(self._sf) > 0:
-                self.update_adaptive(iteration % self.population_size)
-
-        labels = self.get_labels()
-        self.get_centroids(labels)
-        return self
+        self._labels = self.get_labels()
+        self.get_centroids(self._labels)

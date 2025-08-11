@@ -92,19 +92,10 @@ class BRKGA(GeneticClustering):
 
         iteration = 0
         while not self.stop_criteria(iteration):
-            self._update()
+            self.update()
             iteration += 1
 
         return self
-
-    def create_population(self):
-        """
-        Inicializa la población con valores aleatorios en el rango [0, 1].
-        """
-        self.population = np.random.rand(self._population_size, self._dim)
-
-        self.calculate_fitness()
-
 
     def crossover(self, parent1, parent2):
         """
