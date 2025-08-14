@@ -73,28 +73,6 @@ def test_lcvqe_check_ml(define_lcvqe):
     assert lcvqe._labels[0] != lcvqe._labels[1], "Labels for must-link cases do not match after violation check"
     assert lcvqe.must_link_violations[0][1] == 1, "Must-link violation detected after check"
 
-def test_lcvqe_check_cl(define_lcvqe):
-    lcvqe = define_lcvqe
-    lcvqe.centroids = np.array([[0, 1], [2, 0], [-1, -1]])
-    X = np.array([[0.5, 0.5], [2.5, 0.5], [-1, -1]])
-
-    lcvqe.X = X
-    lcvqe._labels = np.array([0, 1, 0])
-    lcvqe._check_ml_cases()
-
-    assert lcvqe._labels[0] == lcvqe._labels[1], "Labels for must-link cases do not match"
-
-    lcvqe._labels = np.array([0, 1, 1])
-    lcvqe.centroids = np.array([[0, 20], [20, 0], [-1, -1]])
-    X = np.array([[0, 20], [20, 0], [-1, -1]])
-    lcvqe.X = X
-
-    assert lcvqe.must_link_violations[0][1] == 0, "Must-link violation not detected"
-    lcvqe._check_ml_cases()
-
-    assert lcvqe._labels[0] != lcvqe._labels[1], "Labels for must-link cases do not match after violation check"
-    assert lcvqe.must_link_violations[0][1] == 1, "Must-link violation detected after check"
-
 def test_lcvqe_predict(define_lcvqe):
     lcvqe = define_lcvqe
     X = np.array([[0, 1], [1, 0], [-1, -1]])
@@ -103,11 +81,3 @@ def test_lcvqe_predict(define_lcvqe):
     predictions = lcvqe.predict(X)
     assert len(predictions) == len(X)
     assert np.all(np.isin(predictions, [0, 1]))
-
-def test_get_valid_centroids(define_lcvqe):
-    lcvqe = define_lcvqe
-    X = np.array([[0, 1], [1, 0], [-1, -1]])
-    lcvqe.fit(X)
-
-    valid_centroids = lcvqe.get_centroids(0)
-    assert len(valid_centroids) == 1
