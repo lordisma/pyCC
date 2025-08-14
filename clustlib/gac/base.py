@@ -80,3 +80,10 @@ class GeneticClustering(BaseEstimator):
             centroids.append(np.mean(data_from_cluster, axis=0))
 
         return np.array(centroids)
+    
+    def create_population(self):
+        """Create the initial population for the genetic algorithm."""
+        self.population = np.random.rand(self._population_size, self._dim)
+        self.calculate_fitness()
+        self._labels = self.decode_solution(self.population[0, :])
+        self.centroids = self.get_centroids(self._labels)
