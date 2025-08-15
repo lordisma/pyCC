@@ -1,3 +1,15 @@
+"""LCVQE: Local Constrained Variational Quantum Estimation.
+
+This module implements the LCVQE algorithm, which is a clustering method that
+utilizes constraints to guide the clustering process. It is designed to work with
+must-link and cannot-link constraints, allowing for a more flexible clustering
+approach that respects predefined relationships between data points.
+
+The algorithm iteratively updates cluster centroids while checking and enforcing
+constraints, ensuring that the resulting clusters adhere to the specified
+relationships.
+"""
+
 import logging
 
 import numpy as np
@@ -10,6 +22,24 @@ logger = logging.getLogger(__name__)
 
 
 class LCVQE(BaseEstimator):
+    """Local Constrained Variational Quantum Estimation (LCVQE).
+
+    Attributes:
+        n_clusters (int, optional): The number of clusters to form as well as the 
+            number of centroids to generate.
+        init (:str, optional): Method for initialization, defaults to 'random' choose 
+            k observations (rows) at random from data for the initial centroids. 
+            'custom' use custom_initial_centroids as initial centroids.
+        max_iter (int, optional): Maximum number of iterations of the k-means algorithm 
+            for a single run.
+        tol (float, optional): Relative tolerance with regards to Frobenius norm of 
+            the difference in the cluster centers of two consecutive iterations to 
+            declare convergence.
+        custom_initial_centroids (numpy.ndarray, optional): Custom initial centroids to
+            be used in the initialization. Only used if init='custom'.
+
+    """
+
     def __init__(
         self,
         constraints,
@@ -35,21 +65,17 @@ class LCVQE(BaseEstimator):
         self._dim = self.constraints.shape[0]
 
         self.must_link_violations = np.zeros((self.n_clusters, self._dim))
+        self.cannot_link_violations = np.zeros((self.n_clusters, self._dim))
 
     def _get_closest_centroid(self, instance):
         """Get the closest centroid to the instance.
 
-        Parameters
-        ----------
-        instance: numpy.ndarray
-            The instance to find the closest centroid.
+        Args:
+            instance (numpy.ndarray): The instance to find the closest centroid.
 
-        Returns
-        -------
-        closest_centroid: int
-            The index of the closest centroid.
-        distance: float
-            The distance to the closest centroid.
+        Returns:
+            Tuple[int, float]: A tuple containing the index of the closest centroid
+            and the distance to that centroid.
 
         """
         distances = np.linalg.norm(self.centroids - instance, axis=1)
@@ -59,47 +85,40 @@ class LCVQE(BaseEstimator):
     def get_ml_constraints(self):
         """Get the must-link cases for the instance.
 
-        Parameters
-        ----------
-        instance: numpy.ndarray
-            The instance to find the must-link cases.
-
-        Returns
-        -------
-        ml_cases: list of tuples
-            The must-link cases for the instance.
+        Returns:
+            ml_cases (List[Tuple[int, int]]): List of tuples where each tuple contains 
+                the indices of the instances that must be linked.
 
         """
         ml = np.copy(self.constraints)
-        ml = ml - np.diag(np.diag(ml))  # Remove diagonal elements
+        ml = ml - np.diag(np.diag(ml))
         return np.argwhere(ml > 0)
 
     def get_cl_constraints(self):
-        """Get the cannot-link constraints for the instance.
+        """Get the cannot-link cases for the instance.
 
-        Parameters
-        ----------
-        instance: numpy.ndarray
-            The instance to find the cannot-link constraints.
-
-        Returns
-        -------
-        cl_constraints: list of tuples
-            The cannot-link constraints for the instance.
+        Returns:
+        ml_cases (List[Tuple[int, int]]): List of tuples where each tuple contains
+            the indices of instances that must be linked.
 
         """
         cl = np.copy(self.constraints)
-        cl = cl - np.diag(np.diag(cl))  # Remove diagonal elements
+        cl = cl - np.diag(np.diag(cl))
         return np.argwhere(cl < 0)
 
     def _check_ml_cases(self):
-        """Get the distance of an instance to the closest centroid, and the distance to the other instances.
+        """Check must-link cases.
 
-        Parameters
-        ----------
-        dataset: numpy.ndarray
-            The data to cluster.
+        This method iterates through the must-link constraints and checks if the
+        instances that must be linked are assigned to the same cluster. If they are
+        not, it will reassign them to the closest centroid based on the distance
+        between the instance and the centroids.
 
+        It updates the `must_link_violations` matrix to indicate which instances
+        violate the must-link constraints.
+
+        This method ensures that the must-link constraints are respected by adjusting
+        the labels of instances as necessary.
         """
         for i, j in self.get_ml_constraints():
             c_i, distance_c_i = self._get_closest_centroid(self.X[i])
@@ -128,7 +147,16 @@ class LCVQE(BaseEstimator):
                 self._labels[i] = c_j
 
     def _check_cl_cases(self):
-        """Get the distance of an instance to the closest centroid, and the distance to the other instances."""
+        """Check cannot-link cases.
+        
+        This method iterates through the cannot-link constraints and checks if the
+        instances that cannot be linked are assigned to the same cluster. If they are
+        not, it will reassign them to the closest centroid based on the distance
+        between the instance and the centroids.
+
+        It updates the `cannot_link_violations` matrix to indicate which instances
+        violate the cannot-link constraints.
+        """
         for i, j in self.get_cl_constraints():
             cluster_i = self._labels[i]
             cluster_j = self._labels[j]
@@ -205,23 +233,7 @@ class LCVQE(BaseEstimator):
         return np.abs(np.linalg.norm(self._delta)) < self.tol
 
     def _fit(self):
-        """Fit the model to the data.
-
-        Parameters
-        ----------
-        dataset: numpy.ndarray
-            The data to cluster.
-        labels: numpy.ndarray, default=None
-            Ignored. This parameter exists only for compatibility with the sklearn API.
-
-        Returns
-        -------
-        self
-            The fitted estimator.
-
-        """
-        self.must_link_violations = np.zeros((self.n_clusters, self.X.shape[0]))
-        self.cannot_link_violations = np.zeros((self.n_clusters, self.X.shape[0]))
+        """Fit the model to the data."""
         iteration = 0
 
         logging.debug("Fitting LCVQE model")
@@ -236,5 +248,4 @@ class LCVQE(BaseEstimator):
             logging.debug(f"Iteration {iteration}: Updating labels")
             iteration += 1
 
-        # Initialize clusters
         return self.centroids

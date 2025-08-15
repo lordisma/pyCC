@@ -4,7 +4,7 @@ from typing import Sequence
 import numpy as np
 import scipy
 
-from clustlib.gac.base import GeneticClustering
+from clustlib.gac._base import GeneticClustering
 
 logger = logging.getLogger(__name__)
 

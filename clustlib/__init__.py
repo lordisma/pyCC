@@ -1,19 +1,11 @@
-"""PyCC
+"""PyCC."""
 
-"""
-
-from .kmean import *
-from .sin import *
-from .gac import *
-from .nonparam import *
-from .fuzzy import *
+from . import fuzzy, gac, kmean, nonparam, sin
 
 __all__ = [
-    "copkmeans",
-    "rdpmean",
-    "dils",
-    "shade",
-    "brkga",
-    "tvclust",
-    "lcvqe",
+    "kmean",
+    "sin",
+    "gac",
+    "nonparam",
+    "fuzzy"
 ]

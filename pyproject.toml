@@ -84,6 +84,10 @@ select = [
     "D"
 ]
 fixable = ["ALL"]
+ignore = [
+    "D107", # Missing docstring in __init__
+    "D104", # Missing docstring in public package
+]
 
 [tool.ruff.format]
 quote-style = "double"
