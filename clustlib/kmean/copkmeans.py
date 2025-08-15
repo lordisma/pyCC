@@ -5,7 +5,7 @@ from typing import Sequence
 
 import numpy as np
 
-from .. import BaseEstimator
+from ..model import BaseEstimator
 from ..utils.distance import match_distance
 from ..utils.simpleconstraints import SimpleConstraints
 
