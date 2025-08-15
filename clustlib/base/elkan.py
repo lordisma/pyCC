@@ -28,16 +28,17 @@ class ElkanKMeans(KMeans):
         might be missclassified after the initialization.
 
         Parameters
-        __________
+        ----------
         dataset: numpy.ndarray
             Training instances to cluster.
 
         Returns
-        _______
+        -------
         numpy.ndarray
             Lower bounds for each instance.
         numpy.ndarray
             Upper bounds for each instance.
+
         """
         self._update_distance()
 
@@ -47,9 +48,7 @@ class ElkanKMeans(KMeans):
         self._labels = np.argmin(self._lower_bounds, axis=1)
 
     def _update(self):
-        """
-        Update the centroids and the bounds for each instance in the dataset
-        """
+        """Update the centroids and the bounds for each instance in the dataset."""
         previous_centroids = self._centroids.copy()
 
         for c in range(self._centroids.shape[0]):

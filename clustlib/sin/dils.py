@@ -43,8 +43,7 @@ class DILS(BaseEstimator):
         self._fitness = None
 
     def initialize(self):
-        """
-        Initialize the chromosomes and their fitness values.
+        """Initialize the chromosomes and their fitness values.
 
         This method initializes two chromosomes with random cluster assignments and calculates their fitness values.
         """
@@ -57,8 +56,7 @@ class DILS(BaseEstimator):
         self.worst = cromosomes[np.argmax(self._fitness)]
 
     def _intra_cluster_distance(self, labels):
-        """
-        Calculate the intra-cluster distance.
+        """Calculate the intra-cluster distance.
 
         This method calculates the average distance between all points in the same cluster.
 
@@ -67,6 +65,7 @@ class DILS(BaseEstimator):
 
         Returns:
             float: The average intra-cluster distance.
+
         """
         result = 0
 
@@ -91,14 +90,14 @@ class DILS(BaseEstimator):
         return result / self.n_clusters if self.n_clusters > 0 else 0.0
 
     def ml_infeasability(self, cromosome):
-        """
-        Calculate the infeasibility of the current clustering based on must-link constraints.
+        """Calculate the infeasibility of the current clustering based on must-link constraints.
 
         Args:
             cromosome (numpy.ndarray): The current clustering labels.
 
         Returns:
             int: The number of must-link constraints that are not satisfied.
+
         """
         infeasability = 0
 
@@ -112,14 +111,14 @@ class DILS(BaseEstimator):
         )  # Each must-link constraint is counted twice, once for each element in the pair.
 
     def cl_infeasability(self, cromosome):
-        """
-        Calculate the infeasibility of the current clustering based on cannot-link constraints.
+        """Calculate the infeasibility of the current clustering based on cannot-link constraints.
 
         Args:
             cromosome (numpy.ndarray): The current clustering labels.
 
         Returns:
             int: The number of cannot-link constraints that are not satisfied.
+
         """
         infeasability = 0
 
@@ -131,14 +130,14 @@ class DILS(BaseEstimator):
         return infeasability // 2
 
     def get_single_fitness(self, cromosome):
-        """
-        Calculate the fitness of a single chromosome.
+        """Calculate the fitness of a single chromosome.
 
         Args:
             cromosome (numpy.ndarray): The chromosome to evaluate.
 
         Returns:
             float: The fitness value of the chromosome.
+
         """
         distance = self._intra_cluster_distance(cromosome)
         ml_infeasability = self.ml_infeasability(cromosome)
@@ -150,14 +149,14 @@ class DILS(BaseEstimator):
         return fitness
 
     def mutation(self, chromosome):
-        """
-        Perform mutation on a chromosome.
+        """Perform mutation on a chromosome.
 
         Args:
             chromosome (numpy.ndarray): The chromosome to mutate.
 
         Returns:
             numpy.ndarray: The mutated chromosome.
+
         """
         n = self.X.shape[0]
         segment_start = np.random.randint(n)
@@ -172,8 +171,7 @@ class DILS(BaseEstimator):
         return chromosome
 
     def crossover(self, parent1, parent2):
-        """
-        Perform crossover between two parents.
+        """Perform crossover between two parents.
 
         Args:
             parent1 (numpy.ndarray): The first parent chromosome.
@@ -181,6 +179,7 @@ class DILS(BaseEstimator):
 
         Returns:
             numpy.ndarray: The new chromosome created by crossover.
+
         """
         if parent1.shape != parent2.shape:
             raise ValueError("Parent chromosomes must have the same shape.")
@@ -191,14 +190,14 @@ class DILS(BaseEstimator):
         return new_cromosome
 
     def local_search(self, chromosome):
-        """
-        Perform local search on a chromosome.
+        """Perform local search on a chromosome.
 
         Args:
             chromosome (numpy.ndarray): The chromosome to improve.
 
         Returns:
             numpy.ndarray: The improved chromosome.
+
         """
         index_list = np.arange(len(chromosome))
         fitness = self.get_single_fitness(chromosome)
@@ -254,11 +253,11 @@ class DILS(BaseEstimator):
         self.calculate_centroids()
 
     def calculate_centroids(self):
-        """
-        Calculate the centroids of the clusters based on the current labels.
+        """Calculate the centroids of the clusters based on the current labels.
 
         Returns:
             numpy.ndarray: The centroids of the clusters.
+
         """
         centroids = np.zeros((self.n_clusters, self.X.shape[1]))
 
@@ -268,11 +267,11 @@ class DILS(BaseEstimator):
         self.centroids = centroids
 
     def _fit(self):
-        """
-        Fit the model to the data.
+        """Fit the model to the data.
 
         Returns:
             numpy.ndarray: The best chromosome found.
+
         """
         self.initialize()
         iteration = 0

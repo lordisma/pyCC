@@ -74,7 +74,6 @@ def test_dils_cl_infeasability(define_dils):
 
 
 def test_dils_intra_cluster_distance(define_dils):
-    from scipy.spatial.distance import pdist
 
     dils = define_dils
     X = np.array([[2, 1], [3, 0], [-2, 1], [-3, 0]])

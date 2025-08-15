@@ -23,6 +23,7 @@ class ShadeCC(GeneticClustering):
         tol (float): Tolerancia de convergencia.
         constraints (ConstraintMatrix): Restricciones must-link y cannot-link.
         solution_archive (np.ndarray): Archivo externo de soluciones para mantener diversidad.
+
     """
 
     solution_archive: np.ndarray
@@ -49,6 +50,7 @@ class ShadeCC(GeneticClustering):
             custom_initial_centroids (Optional[np.ndarray]): Centroides definidos por el usuario.
             constraints (Sequence[Sequence]): Lista de restricciones ML y CL.
             population_size (int): Tamaño de la población genética.
+
         """
         self._delta_centroid = None
         self.n_clusters = n_clusters
@@ -79,6 +81,7 @@ class ShadeCC(GeneticClustering):
 
         Returns:
             np.ndarray: Array de enteros aleatorios excluyendo los valores especificados.
+
         """
         if exclude is None:
             return np.random.randint(low, high, size)
@@ -128,8 +131,10 @@ class ShadeCC(GeneticClustering):
 
         Args:
             parents_idx (np.ndarray): Índices de los padres seleccionados.
+
         Returns:
             Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]: Instancias de la población y del archivo externo.
+
         """
         (idx, best, r1, r2) = parents_idx
 
@@ -149,6 +154,7 @@ class ShadeCC(GeneticClustering):
 
         Returns:
             np.ndarray: Index to the parents selected.
+
         """
         idx = self.randint(0, self._population_size)
         idx_best = self.randint(0, self._num_elite, exclude=[idx])
@@ -171,6 +177,7 @@ class ShadeCC(GeneticClustering):
 
         Returns:
             np.ndarray: Cromosoma mutante generado.
+
         """
         element, best, r1, r2 = self.get_instances(parents)
         mutant = element + f_i * (best - element) + f_i * (r1 - r2)
@@ -189,6 +196,7 @@ class ShadeCC(GeneticClustering):
             delta_fitness (float): Mejora obtenida en fitness.
             cr_i (float): Tasa de cruce usada.
             f_i (float): Factor de escala usado.
+
         """
         self._sf = np.append(self._sf, f_i)
         self._s_cr = np.append(self._s_cr, cr_i)
@@ -209,6 +217,7 @@ class ShadeCC(GeneticClustering):
 
         Returns:
             Tuple[float, float]: Par de (CR, F) adaptados.
+
         """
         r_i = np.random.randint(0, self.memory_size)
         while (
@@ -226,6 +235,7 @@ class ShadeCC(GeneticClustering):
 
         Returns:
             Tuple[np.ndarray, float, float]: Mutante, cr_i y f_i generados.
+
         """
         parents = self.select_parents()
         cr_i, f_i = self.create_adaptive_parameter()
@@ -242,6 +252,7 @@ class ShadeCC(GeneticClustering):
 
         Returns:
             ShadeCC: Instancia entrenada del modelo.
+
         """
         self._s_cr = np.zeros((0, 0))
         self._sf = np.zeros((0, 0))

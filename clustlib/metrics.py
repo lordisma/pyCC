@@ -1,5 +1,4 @@
-"""
-This module contains some methods to calculate the infeasibility of a clustering. The infeasibility is a measure of how
+"""This module contains some methods to calculate the infeasibility of a clustering. The infeasibility is a measure of how
 much the clustering violates the constraints. It is one of the most important metrics to evaluate the quality of a
 clustering, since it is the only one that takes into account the constraints.
 """
@@ -12,7 +11,7 @@ import numpy as np
 def infeasibility(
     clustering: Sequence[Sequence[SupportsIndex]], constraints: Sequence[Sequence]
 ) -> float:
-    """Infeasibility
+    """Infeasibility.
 
     This method calculate the infeasibility of a clustering. The infeasibility is a measure of how much the clustering
     violates the constraints. It is one of the most important metrics to evaluate the quality of a clustering, since it
@@ -20,7 +19,6 @@ def infeasibility(
 
     Parameters
     ----------
-
     clustering: Sequence[Sequence[SupportsIndex]]
         The clustering to evaluate
     constraints: Sequence[Sequence]
@@ -28,9 +26,9 @@ def infeasibility(
 
     Returns
     -------
-
     float
         The infeasibility of the clustering
+
     """
     total: int = 0
 
@@ -43,7 +41,7 @@ def infeasibility(
 def violates_constraints(
     cluster: Sequence[SupportsIndex], constraints: Sequence[Sequence]
 ) -> int:
-    """violates_constraints
+    """violates_constraints.
 
     This method calculated the number of constraints violated by a cluster.
 
@@ -58,6 +56,7 @@ def violates_constraints(
     -------
     int
         The number of constraints violated by the cluster
+
     """
     linked_mtx = constraints[cluster][:, cluster]
     non_linked_mtx = np.delete(constraints, cluster, axis=0)[:, cluster]

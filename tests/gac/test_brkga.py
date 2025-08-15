@@ -1,6 +1,5 @@
 import logging
 import sys
-from math import sqrt
 
 import numpy as np
 import pytest as test

@@ -1,5 +1,5 @@
 # pylint: skip-file
-"""Contraint's Matrix
+"""Contraint's Matrix.
 
 This files contains an implementation of a Contraints Matrix. This is one of the most, if not the most, basic and
 frequently used data structures to store the restrictions' information. It is a symmetric matrix (TODO: Add link)
@@ -9,11 +9,11 @@ $$
     TODO: Add formula for the CM
 $$
 
-Note
-------
-
+Note:
+----
 In our library the relationship between a instance and itself is represented as an invalid value that will trigger an
 error.
+
 """
 from typing import Sequence, SupportsIndex
 
@@ -22,7 +22,7 @@ import numpy as np
 
 # FIXME: Solve pylint error
 class ConstraintMatrix:
-    """ConstraintMatrix
+    """ConstraintMatrix.
 
     This class represent the relationship of a Constraint with the Dataset. Constraints are added knowledge that we
     print in our model. So it specify if two instances can be must-be link (ML) or Can-not link (CL). A relationship
@@ -34,10 +34,11 @@ class ConstraintMatrix:
     any value out of that will be ... (TODO: TBC).
 
     Notes
-    -------
+    -----
     This class reimplement the setitem in order to make sure two things:
         - The matrix is symmetric so at any moment $c_ij = c_ji$
         - The values are all in the range of [-1, 1]
+
     """
 
     def __init__(self, matrix: Sequence) -> None:
@@ -91,6 +92,7 @@ class ConstraintMatrix:
         ------
         ValueError
             If a contradiction is found in the matrix.
+
         """
         shape = self.__matrix.shape
         must_be_link = {}
@@ -184,7 +186,7 @@ class ConstraintMatrix:
         self.__cl = cannot_be_link
 
     def get_constraints(self, i: int) -> np.ndarray:
-        """This method returns the set of constraints that are cannot-be-link (CL) and must-be-link (ML)
+        """This method returns the set of constraints that are cannot-be-link (CL) and must-be-link (ML).
 
         Parameters
         ----------
@@ -195,11 +197,12 @@ class ConstraintMatrix:
         -------
         list
             The set of constraints that are cannot-be-link (CL) and must-be-link (ML)
+
         """
         return self.__matrix[i]
 
     def get_cl_constraints(self, i: int) -> set:
-        """This method returns the set of constraints that are cannot-be-link (CL)
+        """This method returns the set of constraints that are cannot-be-link (CL).
 
         Parameters
         ----------
@@ -210,11 +213,12 @@ class ConstraintMatrix:
         -------
         set
             The set of constraints that are cannot-be-link (CL)
+
         """
         return self.__cl[i]
 
     def get_ml_constraints(self, i: int) -> set:
-        """This method returns the set of constraints that are must-be-link (ML)
+        """This method returns the set of constraints that are must-be-link (ML).
 
         Parameters
         ----------
@@ -225,6 +229,6 @@ class ConstraintMatrix:
         -------
         set
             The set of constraints that are must-be-link (ML)
-        """
 
+        """
         return self.__ml[i]

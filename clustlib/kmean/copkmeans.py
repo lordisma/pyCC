@@ -26,6 +26,7 @@ class COPKMeans(BaseEstimator):
             centers of two consecutive iterations to declare convergence.
         custom_initial_centroids (numpy.ndarray, optional): Custom initial centroids to be used in the
             initialization. Only used if init='custom'.
+
     """
 
     def __init__(
@@ -67,6 +68,7 @@ class COPKMeans(BaseEstimator):
         Returns:
             numpy.ndarray: Lower bounds for each instance.
             numpy.ndarray: Upper bounds for each instance.
+
         """
         logger.debug("Initializing bounds for COPKMeans")
         lower_bounds = np.zeros((self.X.shape[0], self.n_clusters))
@@ -156,6 +158,7 @@ class COPKMeans(BaseEstimator):
 
         Returns:
             numpy.ndarray: The valid centroids for the instance.
+
         """
         constraints = self.constraints[idx]
         ml = np.argwhere(constraints > 0).flatten()
@@ -180,6 +183,7 @@ class COPKMeans(BaseEstimator):
 
         Args:
             idx (int): The index of the instance to update.
+
         """
         instance = np.copy(self.X[idx])
         valid_centroids = self.get_centroids(idx)
@@ -247,6 +251,7 @@ class COPKMeans(BaseEstimator):
 
         Args:
             X (numpy.ndarray): Training instances to cluster.
+
         """
         old = np.copy(self.centroids)
 
@@ -271,8 +276,8 @@ class COPKMeans(BaseEstimator):
 
         Args:
             X (numpy.ndarray): Training instances to cluster.
-        """
 
+        """
         distance = self.distance(self._delta, axis=1)
 
         logger.debug(f"Updating bounds with delta: {distance}")
@@ -295,6 +300,7 @@ class COPKMeans(BaseEstimator):
 
         Returns:
             boolean: True if the candidate centroid is a valid option for the instance, False otherwise.
+
         """
         half_distance = (
             0.5 * self._centroids_distance[centroid_index, candidate_centroid]

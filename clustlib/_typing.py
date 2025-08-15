@@ -1,4 +1,4 @@
-"""typing
+"""typing.
 
 This module define some utilities types used on algorithms.
 

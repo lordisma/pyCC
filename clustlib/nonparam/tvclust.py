@@ -13,8 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class TVClust(BaseEstimator):
-    """
-    TVClust: A constrained variational Bayesian clustering algorithm based on a
+    """TVClust: A constrained variational Bayesian clustering algorithm based on a
     truncated Dirichlet Process mixture model (TVClust).
 
     Attributes:
@@ -59,6 +58,7 @@ class TVClust(BaseEstimator):
             Interpretation: Each row `gamma[k] = [a, b]` encodes the Beta distribution for the stick-breaking
             variable `v_k`, which defines the prior weight of cluster k. These parameters are used to construct the
             variational approximation of the Dirichlet Process.
+
     """
 
     # Concentration of the clusters
@@ -124,8 +124,7 @@ class TVClust(BaseEstimator):
         self.__beta = np.repeat(self.__beta0, n_clusters)
 
     def concentration(self):
-        """
-        This measure is used to determine how "concentrated" a Gaussian component (cluster) is around its mean.
+        """This measure is used to determine how "concentrated" a Gaussian component (cluster) is around its mean.
         It is calculated as the sum of the squared Mahalanobis distances between each data point and the mean of the
         cluster, weighted by the probability of each data point belonging to that cluster.
         """
@@ -138,15 +137,13 @@ class TVClust(BaseEstimator):
         )
         sum = np.sum(phi(aux))
 
-        logger.debug(f"Calculating the determinant of the covariance")
+        logger.debug("Calculating the determinant of the covariance")
         (sign, logdet) = np.linalg.slogdet(self.__cov_inverse)
 
         return sum + p * m.log(2) + (sign * logdet)
 
     def expected_distance(self):
-        """
-        Calculate the Mahalanobis distance between a point and a cluster.
-        """
+        """Calculate the Mahalanobis distance between a point and a cluster."""
         p = self.X.shape[1]
         n = self.X.shape[0]
         mahalanobis_distance = np.zeros((self.n_clusters, n))
@@ -163,9 +160,7 @@ class TVClust(BaseEstimator):
         return beta_terms[:, np.newaxis] + weighted_distances
 
     def sbp(self):
-        """
-        Apply the sticky breaking process to the cluster
-        """
+        """Apply the sticky breaking process to the cluster."""
         trust = (self.concentration()[:, np.newaxis] - self.expected_distance()) * 0.5
         trust = trust.T
 
@@ -181,18 +176,16 @@ class TVClust(BaseEstimator):
         return trust
 
     def update_beta(self):
-        """
-        Update the beta matrix
-        """
+        """Update the beta matrix."""
         self.__beta = np.sum(self.__responsabilities, axis=0) + self.__beta0
 
     def update_mu(self):
-        """
-        Compute the posterior mean muQ[k] for cluster k.
+        """Compute the posterior mean muQ[k] for cluster k.
 
         Note:
         The N_k is the number of points in the cluster k, however, since it appears in the denominator and the numerator
         it cancels out, so we can ignore it.
+
         """
         totals = np.sum(self.__responsabilities, axis=0)
         self.__mu = (
@@ -200,9 +193,7 @@ class TVClust(BaseEstimator):
         ) / self.__beta[:, np.newaxis]
 
     def update_nu(self):
-        """
-        Update the degrees of freedom for each cluster
-        """
+        """Update the degrees of freedom for each cluster."""
         self.__nu = self.__nu0 + np.sum(self.__responsabilities, axis=0)
 
     def update_W(self):
@@ -255,12 +246,10 @@ class TVClust(BaseEstimator):
         return phi_alpha - phi_alpha_beta_q - phi_beta + phi_alpha_beta_p
 
     def constraints_correction(self):
-        """
-        This code need to be fixes as currently it is not doing what it is supposed to do
+        """This code need to be fixes as currently it is not doing what it is supposed to do.
 
         the main error is negative values should not have effect in the corrections
         """
-
         constraints = np.copy(self.constraints)  # (n_clusters,)
         constraints[np.where(constraints <= 0)] = 0.0  # convert to binary constraints
 
@@ -283,9 +272,7 @@ class TVClust(BaseEstimator):
         )
 
     def update_gamma(self):
-        """
-        Update the gamma matrix
-        """
+        """Update the gamma matrix."""
         self.__gamma = np.zeros((self.n_clusters, 2))
 
         responsability_sum = np.sum(self.__responsabilities, axis=0)
@@ -297,8 +284,7 @@ class TVClust(BaseEstimator):
         )[:-1]
 
     def update_prior(self):
-        """
-        Update the posterior parameters of the Beta distributions used to model
+        """Update the posterior parameters of the Beta distributions used to model
         the reliability of must-link and cannot-link constraints.
 
         This method recalculates the posterior shape parameters (alpha and beta)
@@ -323,11 +309,12 @@ class TVClust(BaseEstimator):
         - self.__cl_success_prior
         - self.__cl_error_prior
 
-        Notes:
-        ------
+        Notes
+        -----
         - This step is part of the variational inference procedure in TVClust, where Beta-distributed
         latent variables represent the probability of observing a correct or incorrect constraint.
         - Posterior updates incorporate both soft evidence from clustering and prior beliefs.
+
         """
         distance = np.dot(self.__responsabilities, self.__responsabilities.T)
 
@@ -354,9 +341,7 @@ class TVClust(BaseEstimator):
         )
 
     def negative_entropy(self):
-        """
-        Calculate the negative entropy of the model
-        """
+        """Calculate the negative entropy of the model."""
         self.__responsabilities = normalize(self.__responsabilities, axis=1, norm="l1")
         aux = self.__responsabilities + np.finfo(float).eps  # avoid log(0)
 
@@ -383,9 +368,7 @@ class TVClust(BaseEstimator):
         return 0.5 * distance[cluster] * (conc - self.expected_distance())
 
     def check_improvement(self):
-        """
-        Check if the iteration has improved over the previous one
-        """
+        """Check if the iteration has improved over the previous one."""
         totals = np.sum(self.__responsabilities, axis=0)
         verosimilitude = 0
         concentration = self.concentration()
@@ -460,12 +443,12 @@ class TVClust(BaseEstimator):
         return total
 
     def entropy_wishart(self):
-        """
-        Computes the entropy contribution of the Wishart distributions
+        """Computes the entropy contribution of the Wishart distributions
         over the precision matrices of all clusters.
 
         Returns:
             total (float): Sum of entropies for all clusters.
+
         """
         total = 0.0
         p = self.X.shape[1]
@@ -605,8 +588,7 @@ class TVClust(BaseEstimator):
         self._labels = np.argmax(self.__responsabilities, axis=1)
 
     def _mean_position(self):
-        """
-        Calculate the mean_position of the cluster based on the current responsibilities.
+        """Calculate the mean_position of the cluster based on the current responsibilities.
 
         Update the `self.mean_position` attribute with the mean of the data points
         """
@@ -621,13 +603,13 @@ class TVClust(BaseEstimator):
         )
 
     def get_centroids(self):
-        """
-        Get the centroids of the clusters.
+        """Get the centroids of the clusters.
 
         Returns
         -------
         numpy.ndarray
             The centroids of the clusters.
+
         """
         for i in range(self.n_clusters):
             weighted_sum = (self.X * self.__responsabilities[:, i][:, np.newaxis])[

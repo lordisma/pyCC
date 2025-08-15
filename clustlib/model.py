@@ -1,5 +1,5 @@
 """Model base
-This module contains a BaseEstimator which provides the base's class for the rest of the estimator
+This module contains a BaseEstimator which provides the base's class for the rest of the estimator.
 
 There is no intention to use this class directly, but to be inherited by other classes. Implementation is based on
 scikit-learn's BaseEstimator in order to facilitate the integration with the library.
@@ -19,8 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class BaseEstimator(ABC, SklearnBaseEstimator):
-    """
-    Base class for estimators in the clustlib package.
+    """Base class for estimators in the clustlib package.
 
     Attributes:
         labels_ (numpy.ndarray): Labels of the dataset.
@@ -28,6 +27,7 @@ class BaseEstimator(ABC, SklearnBaseEstimator):
     Notes:
         All estimators should specify all the parameters that can be set at the class level in their `__init__`
         as explicit keyword arguments (no `*args` or `**kwargs`).
+
     """
 
     centroids: np.ndarray = None
@@ -54,7 +54,7 @@ class BaseEstimator(ABC, SklearnBaseEstimator):
             elif self.init == "kmeans":
                 self.centroids = kmeans(dataset, self.n_clusters)
             else:
-                raise ValueError(f"Unknown initialization method")
+                raise ValueError("Unknown initialization method")
 
         if self._labels is None:
             self._labels = np.random.randint(
@@ -74,26 +74,26 @@ class BaseEstimator(ABC, SklearnBaseEstimator):
 
         Returns:
             BaseEstimator: The fitted estimator.
+
         """
         raise NotImplementedError
 
     def predict(self, x: np.array) -> int:
-        """
-        Predict the cluster index for a given instance.
+        """Predict the cluster index for a given instance.
 
         Args:
             x (numpy.ndarray): The instance to be predicted.
 
         Returns:
             int: The index of the cluster to which the instance is assigned.
+
         """
         return np.argmin(
             np.linalg.norm(x[:, np.newaxis] - self.centroids, axis=2), axis=1
         )
 
     def calculte_delta(self, x: np.ndarray) -> np.ndarray:
-        """
-        Calculate the difference between the new and old centroids.
+        """Calculate the difference between the new and old centroids.
 
         This method is used to determine when the algorithm has converged.
 
@@ -102,12 +102,12 @@ class BaseEstimator(ABC, SklearnBaseEstimator):
 
         Returns:
             numpy.ndarray: The absolute difference between the new and old centroids.
+
         """
         return np.abs(self.centroids - x)
 
     def update(self):
-        """
-        Update the centroids of the clusters.
+        """Update the centroids of the clusters.
 
         This method calls the `_update` method to update the centroids of the clusters. It also updates the `_delta`
         attribute with the difference between the new and old centroids. The `_delta` attribute is a numpy array
@@ -125,25 +125,25 @@ class BaseEstimator(ABC, SklearnBaseEstimator):
         raise NotImplementedError
 
     def _convergence(self):
-        """
-        Check convergence of the algorithm.
+        """Check convergence of the algorithm.
 
         Returns:
             bool: True if the algorithm has converged, False otherwise.
+
         """
         if self._delta is None:
             logger.debug("Delta is None, convergence cannot be checked.")
             return False
 
     def stop_criteria(self, iteration) -> bool:
-        """
-        Check if the algorithm has reached the stopping criteria.
+        """Check if the algorithm has reached the stopping criteria.
 
         Args:
             iteration (int): The current iteration of the algorithm.
 
         Returns:
             bool: True if the algorithm has reached the stopping criteria, False otherwise.
+
         """
         if self._convergence():
             logger.debug("Convergence reached, stopping criteria met.")

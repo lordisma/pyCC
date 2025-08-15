@@ -5,16 +5,17 @@ def random(dataset: np.ndarray, n_clusters: int) -> np.ndarray:
     """Get random centroids from the dataset.
 
     Parameters
-    __________
+    ----------
     dataset: numpy.ndarray
         The data to cluster.
     n_clusters: int
         The number of clusters.
 
     Returns
-    _______
+    -------
     centroids: numpy.ndarray
         The centroids of the clusters.
+
     """
     if n_clusters > dataset.shape[0]:
         raise ValueError("Number of clusters cannot be greater than number of samples.")
@@ -32,16 +33,17 @@ def kmeans(dataset: np.ndarray, n_clusters: int) -> np.ndarray:
     """Get the centroids of the clusters using k-means.
 
     Parameters
-    __________
+    ----------
     dataset: numpy.ndarray
         The data to cluster.
     n_clusters: int
         The number of clusters.
 
     Returns
-    _______
+    -------
     centroids: numpy.ndarray
         The centroids of the clusters.
+
     """
     from sklearn.cluster import KMeans
 

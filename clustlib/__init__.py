@@ -1,4 +1,4 @@
-"""pyCC
+"""pyCC.
 
 <TODO>
 """

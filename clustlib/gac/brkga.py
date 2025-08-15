@@ -10,8 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class BRKGA(GeneticClustering):
-    """
-    BRKGA (Biased Random-Key Genetic Algorithm) es un algoritmo genético adaptado al clustering con restricciones.
+    """BRKGA (Biased Random-Key Genetic Algorithm) es un algoritmo genético adaptado al clustering con restricciones.
     Utiliza una codificación basada en claves aleatorias (random keys) para representar soluciones y operadores genéticos
     sesgados para generar nuevas poblaciones que optimizan la partición de datos.
 
@@ -80,8 +79,7 @@ class BRKGA(GeneticClustering):
         return np.linalg.norm(self._delta) < self.tol
 
     def _fit(self):
-        """
-        Ajusta el modelo BRKGA a los datos dados.
+        """Ajusta el modelo BRKGA a los datos dados.
 
         Args:
             X (ndarray): Matriz de datos de entrada.
@@ -90,6 +88,7 @@ class BRKGA(GeneticClustering):
 
         Returns:
             self: Objeto ajustado.
+
         """
         self.create_population()
 
@@ -101,8 +100,7 @@ class BRKGA(GeneticClustering):
         return self
 
     def crossover(self, parent1, parent2):
-        """
-        Realiza cruce entre dos padres para generar un nuevo cromosoma.
+        """Realiza cruce entre dos padres para generar un nuevo cromosoma.
 
         Args:
             parent1 (ndarray): Cromosoma del padre elitista.
@@ -110,6 +108,7 @@ class BRKGA(GeneticClustering):
 
         Returns:
             ndarray: Nuevo cromosoma generado.
+
         """
         v = np.where(np.random.rand(self._dim) > self._pbt_inherit)[0]
         new_cromosome = parent1
@@ -117,14 +116,14 @@ class BRKGA(GeneticClustering):
         return new_cromosome
 
     def offspring(self, offspring_size):
-        """
-        Genera descendencia cruzando padres elite con no-elite.
+        """Genera descendencia cruzando padres elite con no-elite.
 
         Args:
             offspring_size (int): Número de descendientes a generar.
 
         Returns:
             ndarray: Matriz con la descendencia generada.
+
         """
         elite_idx = np.random.randint(self._num_elite, size=offspring_size)
         non_elite_idx = np.random.randint(
@@ -143,10 +142,10 @@ class BRKGA(GeneticClustering):
         return offspring
 
     def mutation(self):
-        """
-        Crea una nueva generación de individuos mutantes.
+        """Crea una nueva generación de individuos mutantes.
 
         Returns:
             ndarray: Matriz de cromosomas mutantes.
+
         """
         return np.random.rand(self._num_mutants, self._dim)

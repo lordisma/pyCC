@@ -22,6 +22,7 @@ class RDPM(BaseEstimator):
         limit (float, optional): Distance limit for creating new clusters. Defaults to 1.
         x0 (float, optional): Initial value of xi for preventing new clusters. Defaults to 0.001.
         rate (float, optional): Rate of increase of xi. Defaults to 2.0.
+
     """
 
     x0: float
@@ -63,6 +64,7 @@ class RDPM(BaseEstimator):
 
         Returns:
             int: Difference of alliances.
+
         """
         friends = np.argwhere(self.constraints[:, d] > 0)
         strangers = np.argwhere(self.constraints[:, d] < 0)
@@ -94,6 +96,7 @@ class RDPM(BaseEstimator):
 
         Returns:
             numpy.ndarray: Array indicating centroids to remove.
+
         """
         to_remove = np.array([False] * self.n_clusters)
         for centroid in range(self.n_clusters):
@@ -127,6 +130,7 @@ class RDPM(BaseEstimator):
 
         Args:
             to_remove (numpy.ndarray): Array indicating centroids to remove.
+
         """
         if not np.any(to_remove):
             return
@@ -152,6 +156,7 @@ class RDPM(BaseEstimator):
 
         Returns:
             numpy.ndarray: Penalties for assigning the instance to each centroid.
+
         """
         instance = self.X[idx]
 

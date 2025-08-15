@@ -1,10 +1,8 @@
 import logging
 import sys
-from math import sqrt
 
 import numpy as np
 import pytest as test
-from mock import patch
 
 from clustlib.gac.shade import ShadeCC
 
