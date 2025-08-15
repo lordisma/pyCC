@@ -1,14 +1,11 @@
-# PyCC
-Collection of clustering methods and utilities
+<h2 align="center">Python Constraint Clustering</h2>
+
+<p align="center">
+<a href="https://github.com/psf/black"><img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg"></a>
+</p>
 
 ## Status
 
 | Latests Version | Coverage | Build |
 | :-------------: | :------: | :---: |
 | TODO            | TODO     | TODO  | 
-
----
-
-## Code Quality
-
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
