@@ -7,38 +7,44 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.11"
+scikit-learn = "^1.3.1"
+numpy = "^1.26.2"
+networkx = "^3.4.2"
+scipy = "^1.16.1"
+
+[tool.poetry.group.dev.dependencies]
+black = "^24.10.0"
+deptry = "^0.23.1"
 pytest = "^7.4.2"
-pylint = "^2.17.5"
 coverage = "^7.3.1"
+mock = "^5.2.0"
+isort = "^6.0.1"
+
+[tool.poetry.group.docs]
+optional = true
+
+[tool.poetry.group.docs.dependencies]
 mkdocs = "^1.5.3"
 mkdocs-material = "^9.4.1"
 mkdocstrings = "^0.26.1"
 mkdocstrings-python = "^1.7.1"
-scikit-learn = "^1.3.1"
-cython = "^3.0.2"
-setuptools = "^69.0.2"
-numpy = "^1.26.2"
-maturin = "^1.4.0"
-pandas = "^2.2.0"
-seaborn = "^0.13.2"
-pygad = "^3.3.1"
-matlab = "^0.1"
-matlib = "^0.1.2"
-networkx = "^3.4.2"
+mkdocs-mermaid2-plugin = "^1.2.1"
+griffe = "^1.7.3"
+
+[tool.poetry.group.examples]
+optional = true
+
+[tool.poetry.group.examples.dependencies]
 jupyter = "^1.1.1"
 notebook = "^7.4.1"
 plotly = "^6.1.2"
-griffe = "^1.7.3"
-lazydocs = "^0.4.8"
-mkdocs-mermaid2-plugin = "^1.2.1"
-mock = "^5.2.0"
+seaborn = "^0.13.2"
 
-[tool.poetry.group.dev.dependencies]
-jupyter = "^1.0.0"
-notebook = "^7.0.7"
-ipykernel = "^6.29.0"
-black = "^24.10.0"
+[tool.deptry]
+ignore_notebooks = true
 
-[build-system]
-requires = ["maturin>=1.0,<2.0"]
-build-backend = "maturin"
+[tool.isort]
+profile = "black"
+line_length = 88
+src_paths = ["clustlib", "tests"]
+

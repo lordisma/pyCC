@@ -1,6 +1,8 @@
-import pytest as test
-from clustlib.fuzzy.lcvqe import LCVQE
 import numpy as np
+import pytest as test
+
+from clustlib.fuzzy.lcvqe import LCVQE
+
 
 @test.fixture
 def define_lcvqe():

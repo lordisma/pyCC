@@ -1,9 +1,10 @@
-import pytest as test
-from clustlib.kmean.rdpmean import RDPM
-import numpy as np
-
 import logging
 import sys
+
+import numpy as np
+import pytest as test
+
+from clustlib.kmean.rdpmean import RDPM
 
 logging.basicConfig(
     level=logging.DEBUG,

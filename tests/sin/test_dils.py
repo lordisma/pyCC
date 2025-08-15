@@ -1,12 +1,12 @@
-import pytest as test
-from clustlib.sin.dils import DILS
-import numpy as np
-from math import sqrt
-
-from mock import patch
-
 import logging
 import sys
+from math import sqrt
+
+import numpy as np
+import pytest as test
+from mock import patch
+
+from clustlib.sin.dils import DILS
 
 logging.basicConfig(
     level=logging.DEBUG,

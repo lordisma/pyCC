@@ -1,10 +1,12 @@
-import numpy as np
 import random
+from typing import Sequence
+
+import numpy as np
 from scipy.spatial.distance import pdist
 
-from ..utils.distance import match_distance
-from typing import Sequence
 from clustlib.model import BaseEstimator
+
+from ..utils.distance import match_distance
 
 
 class DILS(BaseEstimator):

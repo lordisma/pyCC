@@ -15,7 +15,8 @@ Note
 In our library the relationship between a instance and itself is represented as an invalid value that will trigger an
 error.
 """
-from typing import SupportsIndex, Sequence
+from typing import Sequence, SupportsIndex
+
 import numpy as np
 
 

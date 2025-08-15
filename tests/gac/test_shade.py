@@ -1,12 +1,12 @@
-import pytest as test
-from clustlib.gac.shade import ShadeCC
-import numpy as np
-from math import sqrt
-
-from mock import patch
-
 import logging
 import sys
+from math import sqrt
+
+import numpy as np
+import pytest as test
+from mock import patch
+
+from clustlib.gac.shade import ShadeCC
 
 logging.basicConfig(
     level=logging.DEBUG,

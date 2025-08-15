@@ -1,8 +1,9 @@
-from clustlib.model import BaseEstimator
 import math
 
 import numpy as np
 from scipy.spatial.distance import pdist
+
+from clustlib.model import BaseEstimator
 
 
 class GeneticClustering(BaseEstimator):

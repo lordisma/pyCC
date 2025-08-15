@@ -1,11 +1,14 @@
-import numpy as np
+import logging
 import math as m
-from scipy.special import digamma as phi, betaln, gammaln
+
+import numpy as np
+from scipy.special import betaln
+from scipy.special import digamma as phi
+from scipy.special import gammaln
 from sklearn.preprocessing import normalize
 
 from .. import BaseEstimator
 
-import logging
 logger = logging.getLogger(__name__)
 
 class TVClust(BaseEstimator):

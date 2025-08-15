@@ -1,6 +1,8 @@
-import pytest as test
-from clustlib.kmean.copkmeans import COPKMeans
 import numpy as np
+import pytest as test
+
+from clustlib.kmean.copkmeans import COPKMeans
+
 
 @test.fixture
 def define_copkmeans():

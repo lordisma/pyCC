@@ -6,8 +6,10 @@ instances. The edges will be weighted with the value of the constraint, where a 
 relationship and a negative value a cannot-link relationship.
 """
 
-from typing import SupportsIndex, Sequence
+from typing import Sequence, SupportsIndex
+
 import numpy as np
+
 from .matrix import ConstraintMatrix
 
 

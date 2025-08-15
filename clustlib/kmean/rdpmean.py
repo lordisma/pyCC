@@ -1,9 +1,10 @@
+import logging
+
 import numpy as np
 
 from ..model import BaseEstimator
 from ..utils.distance import match_distance
 
-import logging
 logger = logging.getLogger(__name__)
 
 

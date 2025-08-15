@@ -1,6 +1,7 @@
-from numpy import linalg as la
-from numpy import ndarray, array
 from typing import Callable, Dict
+
+from numpy import linalg as la
+from numpy import ndarray
 
 type DistanceFunction = Callable[[ndarray, ndarray, Dict], float|ndarray]
 

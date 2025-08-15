@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
-from typing import Sequence
-import numpy as np
-from .. import BaseEstimator
-
-from ..utils.simpleconstraints import SimpleConstraints
-from ..utils.distance import match_distance
-from time import time
-
 from logging import getLogger
+from time import time
+from typing import Sequence
+
+import numpy as np
+
+from .. import BaseEstimator
+from ..utils.distance import match_distance
+from ..utils.simpleconstraints import SimpleConstraints
 
 logger = getLogger(__name__)
 

@@ -5,16 +5,15 @@ There is no intention to use this class directly, but to be inherited by other c
 scikit-learn's BaseEstimator in order to facilitate the integration with the library.
 """
 
+import logging
 from abc import ABC
-from ._typing import InitCentroid
-from sklearn.base import ClusterMixin as SklearnBaseEstimator
 
 import numpy as np
+from sklearn.base import ClusterMixin as SklearnBaseEstimator
 
+from ._typing import InitCentroid
+from .utils.initilize import kmeans, random
 from .utils.simpleconstraints import SimpleConstraints
-from .utils.initilize import random, kmeans
-
-import logging
 
 logger = logging.getLogger(__name__)
 

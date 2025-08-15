@@ -4,7 +4,8 @@ much the clustering violates the constraints. It is one of the most important me
 clustering, since it is the only one that takes into account the constraints.
 """
 
-from typing import SupportsIndex, Sequence
+from typing import Sequence, SupportsIndex
+
 import numpy as np
 
 

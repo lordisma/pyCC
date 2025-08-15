@@ -1,5 +1,6 @@
-from .kmean import KMeans
 import numpy as np
+
+from .kmean import KMeans
 
 
 class ElkanKMeans(KMeans):

@@ -1,6 +1,8 @@
-import numpy as np
-import networkx as net
 from itertools import repeat
+
+import networkx as net
+import numpy as np
+
 
 class SimpleConstraints:
     __matrix: np.ndarray

@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def random(dataset: np.ndarray, n_clusters: int) -> np.ndarray:
     """Get random centroids from the dataset.
 

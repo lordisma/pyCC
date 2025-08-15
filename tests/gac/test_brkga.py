@@ -1,12 +1,12 @@
-import pytest as test
-from clustlib.gac.brkga import BRKGA
-import numpy as np
-from math import sqrt
-
-from mock import patch
-
 import logging
 import sys
+from math import sqrt
+
+import numpy as np
+import pytest as test
+from mock import patch
+
+from clustlib.gac.brkga import BRKGA
 
 logging.basicConfig(
     level=logging.DEBUG,

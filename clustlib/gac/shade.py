@@ -1,8 +1,10 @@
-from typing import Sequence
-import numpy as np
-from clustlib.gac.base import GeneticClustering
-import scipy
 import logging
+from typing import Sequence
+
+import numpy as np
+import scipy
+
+from clustlib.gac.base import GeneticClustering
 
 logger = logging.getLogger(__name__)
 
