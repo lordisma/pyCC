@@ -1,22 +1,42 @@
 site_name: Constrained Clustering
 
 plugins:
-- mkdocstrings:
-    default_handler: python
+  - search
+  - mermaid2
+  - mkdocstrings:   # Auto-generate API reference from docstrings
+      handlers:
+        python:
+          rendering:
+            show_source: true
 
 markdown_extensions:
   - pymdownx.arithmatex:
       generic: true
-  - pymdownx.superfences:
-      custom_fences:
-        - name: mermaid
-          class: mermaid
-          format: !!python/name:pymdownx.superfences.fence_code_format
 
 extra_javascript:
-  - javascripts/mathjax.js
+  - javascripts/config.js
   - https://polyfill.io/v3/polyfill.min.js?features=es6
   - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
 
 theme:
   name: material
+
+nav:
+  - Home: index.md
+  - References:
+    - Base: api/base.md
+    - KMeans: 
+      - Overview: api/kmean/index.md
+      - COPKMeans: api/kmean/copkmeans.md
+      - RDPMean: api/kmean/rdpmean.md
+    - Local Search:
+      - Overview: api/sin/index.md
+      - DILS: api/sin/dils.md
+    - Nonparametric:
+      - Overview: api/nonparam/index.md
+      - TVClust: api/nonparam/tvclust.md
+    - Genetic Algorithms:
+      - Overview: api/gac/index.md
+      - Biased Random-Key Genetic Algorithm: api/gac/brkga.md
+      - Shade: api/gac/shade.md
+  - Architecture: arch.md

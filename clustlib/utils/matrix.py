@@ -17,7 +17,6 @@ error.
 """
 from typing import SupportsIndex, Sequence
 import numpy as np
-from .._typing import ShapeLike
 
 
 # FIXME: Solve pylint error
@@ -77,7 +76,7 @@ class ConstraintMatrix:
         return self.__matrix.shape[0]
 
     @property
-    def shape(self) -> ShapeLike:
+    def shape(self):
         return self.__matrix.shape
 
     def __propagate_constraints(self):

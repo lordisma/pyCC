@@ -1,287 +1,151 @@
 """Model base
 This module contains a BaseEstimator which provides the base's class for the rest of the estimator
 
-Note
-----
 There is no intention to use this class directly, but to be inherited by other classes. Implementation is based on
 scikit-learn's BaseEstimator in order to facilitate the integration with the library.
-
 """
 
 from abc import ABC
+from ._typing import InitCentroid
 from sklearn.base import ClusterMixin as SklearnBaseEstimator
 
 import numpy as np
 
-from .utils import ConstraintMatrix
+from .utils.simpleconstraints import SimpleConstraints
+from .utils.initilize import random, kmeans
 
+import logging
+
+logger = logging.getLogger(__name__)
 
 class BaseEstimator(ABC, SklearnBaseEstimator):
     """
     Base class for estimators in the clustlib package.
 
-    Notes
-    -----
-    All estimators should specify all the parameters that can be set at the class level in their ``__init__`` as
-    explicit keyword arguments (no ``*args`` or ``**kwargs``).
-    """
+    Attributes:
+        labels_ (numpy.ndarray): Labels of the dataset.
 
-    _lower_bounds: np.ndarray
-    _upper_bounds: np.ndarray
-    _delta_centroid: np.ndarray
-    _centroids_distance: np.ndarray
-    _labels: np.ndarray
-    centroids: np.ndarray
+    Notes:
+        All estimators should specify all the parameters that can be set at the class level in their `__init__` 
+        as explicit keyword arguments (no `*args` or `**kwargs`).
+    """
+    centroids: np.ndarray = None
+    init: InitCentroid
+    
     n_clusters: int
     tol: float
-    constraints: ConstraintMatrix
+    max_iter: int = None
+    
+    constraints: SimpleConstraints
+    X: np.ndarray
+    _labels: np.array = None
+    
+    _delta: np.ndarray = None
 
-    def fit(self, dataset, labels=None):
-        """Fit the model to the data.
+    def fit(self, dataset: np.ndarray, labels: np.array = None):
+        self.X = np.copy(dataset)
 
-        Parameters
-        __________
-        dataset: numpy.ndarray
-            The data to cluster.
-        labels: numpy.ndarray, default=None
-            Ignored. This parameter exists only for compatibility with the sklearn API.
+        if self.centroids is None:
+            if isinstance(self.init, np.ndarray):
+                self.centroids = self.init
+            elif self.init == "random":
+                self.centroids = random(dataset, self.n_clusters)
+            elif self.init == "kmeans":
+                self.centroids = kmeans(dataset, self.n_clusters)
+            else:
+                raise ValueError(f"Unknown initialization method")
+            
+        if self._labels is None:
+            self._labels = np.random.randint(0, self.n_clusters, dataset.shape[0], dtype=int)
+        else:
+            self._labels = np.copy(labels)
+        
+        return self._fit()
 
-        Returns
-        _______
-        self
-            The fitted estimator.
+    def _fit(self):
+        """ Fit the model to the data.
+
+        Args:
+            dataset (numpy.ndarray): The data to cluster.
+            labels (numpy.ndarray, optional): Ignored. This parameter exists only for compatibility with the sklearn API.
+
+        Returns:
+            BaseEstimator: The fitted estimator.
         """
         raise NotImplementedError
+    
+    def predict(self, x: np.array) -> int:
+        """
+        Predict the cluster index for a given instance.
 
-    def _update_centroids(self, dataset):
+        Args:
+            x (numpy.ndarray): The instance to be predicted.
+
+        Returns:
+            int: The index of the cluster to which the instance is assigned.
+        """
+        return np.argmin(np.linalg.norm(x[:, np.newaxis] - self.centroids, axis=2), axis=1)
+    
+    def calculte_delta(self, x: np.ndarray) -> np.ndarray:
+        """
+        Calculate the difference between the new and old centroids.
+
+        This method is used to determine when the algorithm has converged.
+
+        Args:
+            x (numpy.ndarray): The old centroids.
+
+        Returns:
+            numpy.ndarray: The absolute difference between the new and old centroids.
+        """
+        return np.abs(self.centroids - x)
+    
+    def update(self):
+        """
+        Update the centroids of the clusters.
+
+        This method calls the `_update` method to update the centroids of the clusters. It also updates the `_delta` 
+        attribute with the difference between the new and old centroids. The `_delta` attribute is a numpy array 
+        with the same shape as the centroids and is used to determine when the algorithm has converged.
+        """
+        aux = np.copy(self.centroids)
+        self._update()
+        self._delta = self.calculte_delta(aux)
+
+    def _update(self):
         """Update the centroids of the clusters.
 
         This method should be implemented by any class that inherits from it.
-
-        Parameters
-        __________
-        dataset: numpy.ndarray
-            The data to cluster.
-
-        Returns
-        _______
-        numpy.ndarray
-            The updated centroids.
         """
         raise NotImplementedError
 
-    def _update_bounds(self, dataset):
-        """Update the bounds of the clusters.
-
-        This method should be implemented by any class that inherits from it.
-
-        Parameters
-        __________
-        dataset: numpy.ndarray
-            The data to cluster.
+    def _convergence(self):
         """
-        raise NotImplementedError
+        Check convergence of the algorithm.
 
-    def _update_labels(self, dataset):
-        """Update the instances labels.
-
-        This method should be implemented by any class that inherits from it.
-
-        Parameters
-        __________
-        dataset: numpy.ndarray
-            The data to cluster.
+        Returns:
+            bool: True if the algorithm has converged, False otherwise.
         """
-        raise NotImplementedError
-
-    def _calculate_centroids_distance(self):
-        """Calculate the distance between centroids and other centroids.
-
-        This method will update the _centroids_distance.
+        if self._delta is None:
+            logger.debug("Delta is None, convergence cannot be checked.")
+            return False
+    
+    def stop_criteria(self, iteration) -> bool:
         """
-        for i in range(self.n_clusters):
-            for j in range(self.n_clusters):
-                if i == j:
-                    self._centroids_distance[
-                        i, j
-                    ] = np.inf  # If it is the same centroid, the distance is infinite
-                else:
-                    self._centroids_distance[j, i] = np.linalg.norm(
-                        self.centroids[i] - self.centroids[j]
-                    )
+        Check if the algorithm has reached the stopping criteria.
 
-    def _check_convergence(self):
-        """Check convergence of the algorithm.
+        Args:
+            iteration (int): The current iteration of the algorithm.
 
-        Returns
-        _______
-        bool
-            True if the algorithm has converged, False otherwise.
+        Returns:
+            bool: True if the algorithm has reached the stopping criteria, False otherwise.
         """
-        # Check convergence
-        return np.all(np.linalg.norm(self._delta_centroid, axis=1) <= self.tol)
+        if self._convergence():
+            logger.debug("Convergence reached, stopping criteria met.")
+            return True
 
-    def __get_centroids_from_constraints(self, constraints):
-        """Get current class of a set of instances, this will be used to
-        convert the list of instances into a list of centroids.
-
-        Parameters
-        __________
-        constraints: list
-            List of constraints.
-
-        Returns
-        _______
-        numpy.ndarray
-            Centroids from constraints.
-        """
-        # Get centroids from constraints
-        # FIXME: This is assuming that the labels are correctly indexed on the moment of the clustering
-        # so the conversion to centroids is possible.
-        clusters = list(map(int, set(self._labels[list(constraints)])))
-        return np.asarray(clusters, dtype=int)
-
-    def _get_valid_centroids(self, index):
-        """Check the graph of constrains and return a list of valid centroids.
-
-        This method should be overriden by when looking to do a soft clustering.
-        since at the current moment it only takes into account the hard constraints.
-
-        Parameters
-        __________
-        index: int
-            Index of the instance to check.
-
-        Returns
-        _______
-        numpy.ndarray
-            List of valid centroids.
-        """
-        ml_constraints = self.constraints.get_ml_constraints(index)
-        if len(ml_constraints) == 0:
-            ml_prototypes = []
-        else:
-            ml_prototypes = self.__get_centroids_from_constraints(ml_constraints)
-
-        cl_constraints = self.constraints.get_cl_constraints(index)
-        if len(cl_constraints) == 0:
-            cl_prototypes = []
-        else:
-            cl_prototypes = self.__get_centroids_from_constraints(cl_constraints)
-
-        range_centroids = np.arange(self.n_clusters)
-
-        if len(ml_prototypes) != 0:
-            return range_centroids[np.isin(range_centroids, ml_prototypes)]
-
-        if len(cl_prototypes) != 0:
-            return np.delete(range_centroids, cl_prototypes)
-
-        return range_centroids
-
-    def _initialize_bounds(self, dataset):
-        """Initialize lower and upper bounds for each instance.
-
-        This method will calculate the distance to each of the centroids in the cluster.
-        After that, it will assign the closest centroid to each instance and apply the constraints
-        to make sure that the instances respect the limitations.
-
-        In case of conflict, the instance that is closer to the centroid will be kept, and the other
-        will be moved to the next closest centroid.
-
-        FIXME: This method is not efficient and should be refactored.
-
-        NOTE: This method applies the constraints in a soft manner. Which means that the instances
-        might be missclassified after the initialization.
-
-        Parameters
-        __________
-        dataset: numpy.ndarray
-            Training instances to cluster.
-
-        Returns
-        _______
-        numpy.ndarray
-            Lower bounds for each instance.
-        numpy.ndarray
-            Upper bounds for each instance.
-        """
-        lower_bounds = np.zeros((dataset.shape[0], self.n_clusters))
-        upper_bounds = np.zeros((dataset.shape[0]))
-
-        # Initialize lower and upper bounds
-        for instance_index, instance in enumerate(dataset):
-            for centroid_index, centroid in enumerate(self.centroids):
-                lower_bounds[instance_index, centroid_index] = np.linalg.norm(
-                    instance - centroid
-                )
-
-            # Get the closest centroid to the instance
-            self._labels[instance_index] = lower_bounds[instance_index, :].argmin()
-
-            upper_bounds[instance_index] = np.min(
-                lower_bounds[instance_index, self._labels[instance_index]]
-            )
-
-        # Apply the constraints to the newly created bounds and labels
-        for instance_index in range(dataset.shape[0]):
-            ml_constraints = self.constraints.get_ml_constraints(instance_index)
-            cl_constraints = self.constraints.get_cl_constraints(instance_index)
-
-            for (
-                ml_constraint
-            ) in ml_constraints:  # Soft ML constraints, it can be violated
-                if self._labels[ml_constraint] != self._labels[instance_index]:
-                    if upper_bounds[instance_index] > upper_bounds[ml_constraint]:
-                        self._labels[instance_index] = self._labels[ml_constraint]
-                        upper_bounds[instance_index] = lower_bounds[
-                            instance_index, self._labels[ml_constraint]
-                        ]
-                    else:
-                        self._labels[ml_constraint] = self._labels[instance_index]
-                        upper_bounds[ml_constraint] = lower_bounds[
-                            ml_constraint, self._labels[instance_index]
-                        ]
-
-            for cl_constraint in cl_constraints:
-                if self._labels[cl_constraint] == self._labels[instance_index]:
-                    if upper_bounds[instance_index] > upper_bounds[cl_constraint]:
-                        lower_bounds[
-                            instance_index, self._labels[instance_index]
-                        ] = np.inf
-                        new_centroid = lower_bounds[instance_index, :].argmin()
-                        self._labels[instance_index] = new_centroid
-                        upper_bounds[instance_index] = lower_bounds[
-                            instance_index, new_centroid
-                        ]
-                    else:
-                        lower_bounds[
-                            cl_constraint, self._labels[cl_constraint]
-                        ] = np.inf
-                        new_centroid = lower_bounds[cl_constraint, :].argmin()
-                        self._labels[cl_constraint] = new_centroid
-                        upper_bounds[cl_constraint] = lower_bounds[
-                            cl_constraint, new_centroid
-                        ]
-
-        return lower_bounds, upper_bounds
-
-    def _initialize_centroids(self, dataset):
-        """Initialize centroids randomly.
-
-        Parameters
-        __________
-        dataset: numpy.ndarray
-            Training instances to cluster.
-
-        Returns
-        _______
-        numpy.ndarray
-            Set of centroids
-        """
-        # Randomly choose k observations (rows) at random from data for the initial centroids.
-        random_indices = np.random.choice(
-            dataset.shape[0], self.n_clusters, replace=False
-        )
-
-        return dataset[random_indices]
+        if self.max_iter is None:
+            logger.debug("No maximum iterations set, stopping criteria not met.")
+            return False
+        
+        return iteration > self.max_iter
