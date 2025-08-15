@@ -10,23 +10,20 @@ from clustlib.gac.brkga import BRKGA
 
 logging.basicConfig(
     level=logging.DEBUG,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout)
-    ]
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
 )
+
 
 @test.fixture
 def define_brkga():
-    constraints = np.array([
-        [0, 1, -1, -1], 
-        [1, 0, -1, -1], 
-        [-1, -1, 0, 1],
-        [-1, -1, 1, 0]
-    ])
+    constraints = np.array(
+        [[0, 1, -1, -1], [1, 0, -1, -1], [-1, -1, 0, 1], [-1, -1, 1, 0]]
+    )
     brkga = BRKGA(constraints=constraints, n_clusters=2, init="random", max_iter=10)
     yield brkga
     del brkga
+
 
 def test_brkga_initialization(define_brkga):
     import math
@@ -35,11 +32,13 @@ def test_brkga_initialization(define_brkga):
     assert brkga._num_elite == math.ceil(20 * 0.3)
     assert brkga._num_mutants == math.ceil(20 * 0.2)
 
+
 def test_brkga_convergence(define_brkga):
     brkga = define_brkga
     brkga._delta = 1e-5
-    
+
     assert brkga._convergence()
+
 
 def test_brkga_create_population(define_brkga):
     brkga = define_brkga
@@ -56,18 +55,20 @@ def test_brkga_create_population(define_brkga):
 
     assert best <= worst, "Best fitness should be less than or equal to worst fitness"
 
+
 def test_brkga_decode_solution(define_brkga):
     brkga = define_brkga
     brkga.n_clusters = 4
     label = np.array([0, 1, 2, 3])
-    code = np.array([.0, .3, .6, .8])
+    code = np.array([0.0, 0.3, 0.6, 0.8])
     result = brkga.decode_solution(code)
 
     assert np.all(result == label), "decoded solution does not match expected labels"
 
+
 def test_brkga_crossover(define_brkga):
     brkga = define_brkga
-    with patch('numpy.random.rand') as RandMock:
+    with patch("numpy.random.rand") as RandMock:
         mock = np.array([0.1, 0.2, 0.05, 0.7])
         RandMock.return_value = mock
         to_cross = np.where(mock < brkga._pbt_inherit)[0]
@@ -81,10 +82,11 @@ def test_brkga_crossover(define_brkga):
 
     assert np.all(offspring == expected), "Crossover did not produce expected offspring"
 
+
 def test_brkga_predict(define_brkga):
     brkga = define_brkga
     X = np.array([[5, 1], [5, 0], [-5, 0.2], [-5, 0.5]])
-    brkga.max_iter = 100 # Set a high max iteration to ensure convergence
+    brkga.max_iter = 100  # Set a high max iteration to ensure convergence
     brkga.fit(X)
 
     predictions = brkga.predict(X)

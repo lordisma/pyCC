@@ -39,7 +39,7 @@ class RDPM(BaseEstimator):
         max_iter=300,
         limit=1,
         x0=0.001,
-        rate=2.0
+        rate=2.0,
     ):
         self.n_clusters = n_clusters
         self.constraints = constraints
@@ -108,11 +108,17 @@ class RDPM(BaseEstimator):
                 self.centroids[centroid] = np.mean(self.X[assigned], axis=0)
 
                 if np.any(np.isnan(self.centroids[centroid])):
-                    raise ValueError(f"Centroid {centroid} has NaN values, crashing the algorithm")
-                
+                    raise ValueError(
+                        f"Centroid {centroid} has NaN values, crashing the algorithm"
+                    )
+
             elif np.sum(assigned) == 1:
-                logger.debug(f"Centroid {centroid} has only one instance, reinitializing")
-                self.centroids[centroid] = np.random.normal(self.X[assigned][0], scale=0.1, size=self.X.shape[1])
+                logger.debug(
+                    f"Centroid {centroid} has only one instance, reinitializing"
+                )
+                self.centroids[centroid] = np.random.normal(
+                    self.X[assigned][0], scale=0.1, size=self.X.shape[1]
+                )
 
         return to_remove
 
@@ -124,7 +130,7 @@ class RDPM(BaseEstimator):
         """
         if not np.any(to_remove):
             return
-        
+
         removed = 0
         for centroid, is_empty in enumerate(to_remove):
             if is_empty:
@@ -133,8 +139,8 @@ class RDPM(BaseEstimator):
                 continue
 
             self._labels[np.where(self._labels == centroid)] = centroid - removed
-        
-        self.centroids = self.centroids[~to_remove] 
+
+        self.centroids = self.centroids[~to_remove]
         self.n_clusters = self.centroids.shape[0]
 
     def get_penalties(self, idx: int, iteration: int) -> np.ndarray:
@@ -149,13 +155,16 @@ class RDPM(BaseEstimator):
         """
         instance = self.X[idx]
 
-        diff = self.centroids - np.repeat(instance[np.newaxis, :], self.n_clusters, axis=0)
+        diff = self.centroids - np.repeat(
+            instance[np.newaxis, :], self.n_clusters, axis=0
+        )
         distances = self.distance(diff, axis=1).flatten()
-        diff_allies = np.array([self.diff_alliances(idx, c) for c in range(self.n_clusters)])
+        diff_allies = np.array(
+            [self.diff_alliances(idx, c) for c in range(self.n_clusters)]
+        )
 
         xi = self.x0 * (self.rate**iteration)
         return distances - (xi * diff_allies)
-              
 
     def _fit(self):
         """Fits the RDPM model to the data."""
@@ -177,5 +186,7 @@ class RDPM(BaseEstimator):
 
                 self._labels[d] = label
 
-            logger.debug(f"Iteration {iteration} completed with clusters: {self.n_clusters}")
+            logger.debug(
+                f"Iteration {iteration} completed with clusters: {self.n_clusters}"
+            )
             self.update()

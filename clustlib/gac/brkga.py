@@ -8,6 +8,7 @@ from clustlib.gac.base import GeneticClustering
 
 logger = logging.getLogger(__name__)
 
+
 class BRKGA(GeneticClustering):
     """
     BRKGA (Biased Random-Key Genetic Algorithm) es un algoritmo genético adaptado al clustering con restricciones.
@@ -27,6 +28,7 @@ class BRKGA(GeneticClustering):
         probability_mutation (float): Porcentaje de mutantes en cada generación.
         pbt_inherit (float): Probabilidad de herencia en el operador de cruce.
     """
+
     def __init__(
         self,
         constraints: Sequence[Sequence],
@@ -37,7 +39,7 @@ class BRKGA(GeneticClustering):
         population_size=20,
         percentage_elite=0.3,
         probability_mutation=0.2,
-        pbt_inherit=0.1
+        pbt_inherit=0.1,
     ):
         self.n_clusters = n_clusters
         self.init = init
@@ -56,13 +58,15 @@ class BRKGA(GeneticClustering):
     def _update(self):
         mutants = self.mutation()
 
-        normal_population = self.population.shape[0] - self._num_elite - self._num_mutants
+        normal_population = (
+            self.population.shape[0] - self._num_elite - self._num_mutants
+        )
         normal_population = max(normal_population, 0)
         if normal_population > 0:
             offspring = self.offspring(normal_population)
-            self.population[self._num_elite:, :] = np.vstack((offspring, mutants))
+            self.population[self._num_elite :, :] = np.vstack((offspring, mutants))
         else:
-            self.population[self._num_elite:, :] = mutants
+            self.population[self._num_elite :, :] = mutants
 
         self.calculate_fitness()
         self._labels = self.decode_solution(self.population[0, :])
@@ -72,7 +76,7 @@ class BRKGA(GeneticClustering):
         if self._delta is None:
             logger.debug("Delta is None, convergence cannot be checked.")
             return False
-        
+
         return np.linalg.norm(self._delta) < self.tol
 
     def _fit(self):
@@ -123,7 +127,9 @@ class BRKGA(GeneticClustering):
             ndarray: Matriz con la descendencia generada.
         """
         elite_idx = np.random.randint(self._num_elite, size=offspring_size)
-        non_elite_idx = np.random.randint(low=self._num_elite, high=self._population_size, size=offspring_size)
+        non_elite_idx = np.random.randint(
+            low=self._num_elite, high=self._population_size, size=offspring_size
+        )
         offspring = np.empty((offspring_size, self._dim))
 
         elites = self.population[elite_idx]

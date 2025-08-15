@@ -8,6 +8,7 @@ from ..utils.distance import match_distance
 
 logger = logging.getLogger(__name__)
 
+
 class LCVQE(BaseEstimator):
     def __init__(
         self,
@@ -17,7 +18,7 @@ class LCVQE(BaseEstimator):
         distance="euclidean",
         max_iter=300,
         tol=1e-4,
-        custom_initial_centroids=None
+        custom_initial_centroids=None,
     ):
         self.n_clusters = n_clusters
         self.constraints = constraints
@@ -54,7 +55,7 @@ class LCVQE(BaseEstimator):
         distances = np.linalg.norm(self.centroids - instance, axis=1)
         closest_centroid = np.argmin(distances)
         return closest_centroid, distances[closest_centroid]
-    
+
     def get_ml_constraints(self):
         """
         Get the must-link cases for the instance.
@@ -72,7 +73,7 @@ class LCVQE(BaseEstimator):
         ml = np.copy(self.constraints)
         ml = ml - np.diag(np.diag(ml))  # Remove diagonal elements
         return np.argwhere(ml > 0)
-    
+
     def get_cl_constraints(self):
         """
         Get the cannot-link constraints for the instance.
@@ -139,20 +140,22 @@ class LCVQE(BaseEstimator):
 
             cluster = cluster_i
 
-            distances_i = self.distance(self.centroids - self.X[i], axis = 1)
-            distances_j = self.distance(self.centroids - self.X[j], axis = 1)
+            distances_i = self.distance(self.centroids - self.X[i], axis=1)
+            distances_j = self.distance(self.centroids - self.X[j], axis=1)
 
             idx_sorted_i = np.argsort(distances_i)
             idx_sorted_j = np.argsort(distances_j)
 
-            distance_to_cluster = np.array([
-                self.distance(self.centroids[cluster] - self.X[i]),
-                self.distance(self.centroids[cluster] - self.X[j])
-            ])
+            distance_to_cluster = np.array(
+                [
+                    self.distance(self.centroids[cluster] - self.X[i]),
+                    self.distance(self.centroids[cluster] - self.X[j]),
+                ]
+            )
 
             if distance_to_cluster[0] <= distance_to_cluster[1]:
                 alternative_cluster = np.setdiff1d(idx_sorted_j, np.array([cluster]))[0]
-                distance_to_alternative =  distances_j[alternative_cluster]
+                distance_to_alternative = distances_j[alternative_cluster]
                 closest_distance = distances_i[cluster]
                 r_i = i
                 r_j = j
@@ -163,7 +166,11 @@ class LCVQE(BaseEstimator):
                 r_i = j
                 r_j = i
 
-            A = 0.5 * distances_i[cluster] + 0.5 * distances_j[cluster] + 0.5 * distance_to_alternative
+            A = (
+                0.5 * distances_i[cluster]
+                + 0.5 * distances_j[cluster]
+                + 0.5 * distance_to_alternative
+            )
             B = 0.5 * closest_distance + 0.5 * distance_to_alternative
 
             if A < B:
@@ -186,15 +193,17 @@ class LCVQE(BaseEstimator):
             coords_GMLV = np.sum(self.X[ml_instances], 0)
             coords_GCLV = np.sum(self.X[cl_instances], 0)
             n_j = len(members) + 0.5 * np.sum(cl_instances) + np.sum(ml_instances)
-            
-            self.centroids[c, :] = (coords_members + 0.5 * coords_GMLV + coords_GCLV)
-            self.centroids[c, :] = self.centroids[c, :] / n_j if n_j > 0 else self.centroids[c, :]
+
+            self.centroids[c, :] = coords_members + 0.5 * coords_GMLV + coords_GCLV
+            self.centroids[c, :] = (
+                self.centroids[c, :] / n_j if n_j > 0 else self.centroids[c, :]
+            )
 
     def _convergence(self):
         if self._delta is None:
             logger.debug("Delta is None, convergence cannot be checked.")
             return False
-        
+
         return np.abs(np.linalg.norm(self._delta)) < self.tol
 
     def _fit(self):

@@ -8,6 +8,7 @@ from clustlib.gac.base import GeneticClustering
 
 logger = logging.getLogger(__name__)
 
+
 class ShadeCC(GeneticClustering):
     """SHADE Clustering with Constraints (ShadeCC).
 
@@ -60,14 +61,16 @@ class ShadeCC(GeneticClustering):
         self.constraints = constraints
         self._population_size = population_size
         self.memory_size = memory_size
-        self._num_elite = np.ceil(self._population_size * self.percentage_best).astype(int)
+        self._num_elite = np.ceil(self._population_size * self.percentage_best).astype(
+            int
+        )
         self.solution_archive = None
         self._dim = self.constraints.shape[0]
 
     @staticmethod
     def randint(low, high=None, size=None, exclude=None):
         """Genera un número entero aleatorio, excluyendo ciertos valores.
-        
+
         Args:
             low (int): Límite inferior del rango.
             high (int, optional): Límite superior del rango.
@@ -83,25 +86,25 @@ class ShadeCC(GeneticClustering):
             return np.random.choice(
                 [i for i in range(low, high) if i not in exclude], size=size
             )
-    
+
     def _convergence(self):
         if self._delta is None:
             logger.debug("Delta is None, convergence cannot be checked.")
             return False
-        
+
         return np.abs(np.linalg.norm(self._delta)) < self.tol
 
     def _fit(self):
         self.create_population()
         self.create_archive()
-        
+
         iteration = 0
         while not self.stop_criteria(iteration):
             self.update()
             iteration += 1
 
         return self
-    
+
     def create_population(self):
         super().create_population()
 
@@ -113,14 +116,16 @@ class ShadeCC(GeneticClustering):
         if self.solution_archive is None:
             self.solution_archive = np.zeros((0, self._dim))
         else:
-            self.solution_archive = np.vstack((self.solution_archive, np.zeros((0, self._dim))))
+            self.solution_archive = np.vstack(
+                (self.solution_archive, np.zeros((0, self._dim)))
+            )
 
         self._memory_CR = np.full(self.memory_size, 0.5)
         self._memory_F = np.full(self.memory_size, 0.5)
 
     def get_instances(self, parents_idx):
         """Obtiene las instancias de la población y el archivo externo.
-        
+
         Args:
             parents_idx (np.ndarray): Índices de los padres seleccionados.
         Returns:
@@ -132,7 +137,11 @@ class ShadeCC(GeneticClustering):
             self.population[idx],
             self.population[best],
             self.population[r1],
-            self.population[r2] if r2 < self._population_size else self.solution_archive[r2 - self._population_size]
+            (
+                self.population[r2]
+                if r2 < self._population_size
+                else self.solution_archive[r2 - self._population_size]
+            ),
         )
 
     def select_parents(self):
@@ -146,7 +155,9 @@ class ShadeCC(GeneticClustering):
         idx_r1 = self.randint(0, self._population_size, exclude=[idx_best, idx])
 
         archive_size = self.solution_archive.shape[0]
-        idx_r2 = self.randint(0, self._population_size + archive_size, exclude=[idx_best, idx_r1, idx])
+        idx_r2 = self.randint(
+            0, self._population_size + archive_size, exclude=[idx_best, idx_r1, idx]
+        )
 
         return np.array([idx, idx_best, idx_r1, idx_r2])
 
@@ -201,15 +212,11 @@ class ShadeCC(GeneticClustering):
         """
         r_i = np.random.randint(0, self.memory_size)
         while (
-            f_i := scipy.stats.cauchy.rvs(
-                loc=self._memory_F[r_i], scale=0.1
-            )
+            f_i := scipy.stats.cauchy.rvs(loc=self._memory_F[r_i], scale=0.1)
         ) <= 0 and f_i > 1.0:
             continue
 
-        while (
-            cr_i := np.random.normal(self._memory_CR[r_i], 0.1)
-        ) <= 0 and cr_i > 1.0:
+        while (cr_i := np.random.normal(self._memory_CR[r_i], 0.1)) <= 0 and cr_i > 1.0:
             continue
 
         return cr_i, f_i
@@ -224,7 +231,7 @@ class ShadeCC(GeneticClustering):
         cr_i, f_i = self.create_adaptive_parameter()
         mutant = self.crossover(parents, f_i, cr_i)
         return mutant, cr_i, f_i
-        
+
     def _update(self):
         """Entrena el algoritmo SHADE sobre los datos.
 
@@ -250,7 +257,9 @@ class ShadeCC(GeneticClustering):
                 self._next_population_fitness[current_element] = mutant_fitness
                 self.save_adaptive(current_fitness - mutant_fitness, cr_i, f_i)
             else:
-                self._next_population[current_element] = self.population[current_element]
+                self._next_population[current_element] = self.population[
+                    current_element
+                ]
                 self._next_population_fitness[current_element] = current_fitness
 
         self.population = self._next_population

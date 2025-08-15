@@ -10,23 +10,20 @@ from clustlib.gac.shade import ShadeCC
 
 logging.basicConfig(
     level=logging.DEBUG,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout)
-    ]
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
 )
+
 
 @test.fixture
 def define_shade():
-    constraints = np.array([
-        [0, 1, -1, -1], 
-        [1, 0, -1, -1], 
-        [-1, -1, 0, 1],
-        [-1, -1, 1, 0]
-    ])
+    constraints = np.array(
+        [[0, 1, -1, -1], [1, 0, -1, -1], [-1, -1, 0, 1], [-1, -1, 1, 0]]
+    )
     shade = ShadeCC(constraints=constraints, n_clusters=2, init="random", max_iter=10)
     yield shade
     del shade
+
 
 def test_shade_initialization(define_shade):
     import math
@@ -34,11 +31,13 @@ def test_shade_initialization(define_shade):
     shade = define_shade
     assert shade._num_elite == math.ceil(20 * 0.2)
 
+
 def test_shade_convergence(define_shade):
     shade = define_shade
     shade._delta = 1e-5
-    
+
     assert shade._convergence()
+
 
 def test_shade_create_population(define_shade):
     shade = define_shade
@@ -55,19 +54,21 @@ def test_shade_create_population(define_shade):
 
     assert best <= worst, "Best fitness should be less than or equal to worst fitness"
 
+
 def test_shade_decode_solution(define_shade):
     shade = define_shade
     shade.n_clusters = 4
     label = np.array([0, 1, 2, 3])
-    code = np.array([.0, .3, .6, .8])
+    code = np.array([0.0, 0.3, 0.6, 0.8])
     result = shade.decode_solution(code)
 
     assert np.all(result == label), "decoded solution does not match expected labels"
 
+
 def test_shade_predict(define_shade):
     shade = define_shade
     X = np.array([[5, 1], [5, 0], [-5, 0.2], [-5, 0.5]])
-    shade.max_iter = 100 # Set a high max iteration to ensure convergence
+    shade.max_iter = 100  # Set a high max iteration to ensure convergence
     shade.fit(X)
 
     predictions = shade.predict(X)

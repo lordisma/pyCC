@@ -3,7 +3,8 @@ from typing import Callable, Dict
 from numpy import linalg as la
 from numpy import ndarray
 
-type DistanceFunction = Callable[[ndarray, ndarray, Dict], float|ndarray]
+type DistanceFunction = Callable[[ndarray, ndarray, Dict], float | ndarray]
+
 
 def match_distance(name: str) -> DistanceFunction:
     """Get the distance function by name.
@@ -22,8 +23,9 @@ def match_distance(name: str) -> DistanceFunction:
         return euclidean_distance
     else:
         raise ValueError(f"Unknown distance function: {name}")
-    
-def euclidean_distance(a: ndarray, **kwargs) -> float|ndarray:
+
+
+def euclidean_distance(a: ndarray, **kwargs) -> float | ndarray:
     """Calculate the Euclidean distance between two points.
 
     Parameters

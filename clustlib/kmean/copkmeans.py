@@ -11,6 +11,7 @@ from ..utils.simpleconstraints import SimpleConstraints
 
 logger = getLogger(__name__)
 
+
 class COPKMeans(BaseEstimator):
     """KMeans estimator is a clustering algorithm that aims to partition n observations into k clusters in which each
     observation belongs to the cluster with the nearest mean, serving as a prototype of the cluster. This results in a
@@ -18,12 +19,12 @@ class COPKMeans(BaseEstimator):
 
     Attributes:
         n_clusters (int, optional): The number of clusters to form as well as the number of centroids to generate.
-        init (:str, optional): Method for initialization, defaults to 'random' choose k observations (rows) at 
+        init (:str, optional): Method for initialization, defaults to 'random' choose k observations (rows) at
             random from data for the initial centroids. 'custom' use custom_initial_centroids as initial centroids.
         max_iter (int, optional): Maximum number of iterations of the k-means algorithm for a single run.
         tol (float, optional): Relative tolerance with regards to Frobenius norm of the difference in the cluster
             centers of two consecutive iterations to declare convergence.
-        custom_initial_centroids (numpy.ndarray, optional): Custom initial centroids to be used in the 
+        custom_initial_centroids (numpy.ndarray, optional): Custom initial centroids to be used in the
             initialization. Only used if init='custom'.
     """
 
@@ -56,7 +57,7 @@ class COPKMeans(BaseEstimator):
         In case of conflict, the instance that is closer to the centroid will be kept, and the other
         will be moved to the next closest centroid.
 
-        Note: 
+        Note:
             This method applies the constraints in a soft manner. Which means that the instances
             might be missclassified after the initialization.
 
@@ -109,18 +110,18 @@ class COPKMeans(BaseEstimator):
             for cl_constraint in cl_constraints:
                 if self._labels[cl_constraint] == self._labels[instance_index]:
                     if upper_bounds[instance_index] > upper_bounds[cl_constraint]:
-                        lower_bounds[
-                            instance_index, self._labels[instance_index]
-                        ] = np.inf
+                        lower_bounds[instance_index, self._labels[instance_index]] = (
+                            np.inf
+                        )
                         new_centroid = lower_bounds[instance_index, :].argmin()
                         self._labels[instance_index] = new_centroid
                         upper_bounds[instance_index] = lower_bounds[
                             instance_index, new_centroid
                         ]
                     else:
-                        lower_bounds[
-                            cl_constraint, self._labels[cl_constraint]
-                        ] = np.inf
+                        lower_bounds[cl_constraint, self._labels[cl_constraint]] = (
+                            np.inf
+                        )
                         new_centroid = lower_bounds[cl_constraint, :].argmin()
                         self._labels[cl_constraint] = new_centroid
                         upper_bounds[cl_constraint] = lower_bounds[
@@ -130,8 +131,7 @@ class COPKMeans(BaseEstimator):
         return lower_bounds, upper_bounds
 
     def _fit(self):
-        """Fit the model to the data.
-        """
+        """Fit the model to the data."""
         self._lower_bounds, self._upper_bounds = self.initialize_bounds()
 
         logger.debug("Starting the iterations for COPKMeans")
@@ -140,22 +140,20 @@ class COPKMeans(BaseEstimator):
         iteration = 0
         while not self.stop_criteria(iteration):
             iteration += 1
-            logger.debug(
-                f"Iteration {iteration} of {self.max_iter} for COPKMeans"
-            )
+            logger.debug(f"Iteration {iteration} of {self.max_iter} for COPKMeans")
 
             self.update()
 
         logger.debug(f"COPKMeans finished after {time() - start:.2f}")
-    
+
     def get_centroids(self, idx):
         """Get the valid centroids for the instance.
 
         This method checks the constraints for the instance and returns the valid centroids.
-        
+
         Args:
             idx(int): The index of the instance to check.
-        
+
         Returns:
             numpy.ndarray: The valid centroids for the instance.
         """
@@ -164,20 +162,15 @@ class COPKMeans(BaseEstimator):
         cl = np.argwhere(constraints < 0).flatten()
 
         if ml is not None and len(ml) > 0:
-            logger.debug(
-                f"Instance {idx} has must-be-link constraints: {len(ml)}"
-            )
+            logger.debug(f"Instance {idx} has must-be-link constraints: {len(ml)}")
             labels = np.unique(self._labels[ml])
             return labels
-        
+
         if cl is not None and len(cl) > 0:
             labels = np.unique(self._labels[cl])
-            valid_centroids = np.delete(
-                np.arange(self.n_clusters), 
-                labels
-            )
+            valid_centroids = np.delete(np.arange(self.n_clusters), labels)
             return valid_centroids
-        
+
         return np.arange(self.n_clusters)
 
     def update_label(self, idx):
@@ -193,8 +186,10 @@ class COPKMeans(BaseEstimator):
 
         if len(valid_centroids) == 0:
             raise ValueError("Invalid set of centroids")
-        
-        self._lower_bounds[idx, np.isin(np.arange(self.n_clusters), valid_centroids, invert=True)] = np.inf
+
+        self._lower_bounds[
+            idx, np.isin(np.arange(self.n_clusters), valid_centroids, invert=True)
+        ] = np.inf
 
         if len(valid_centroids) == 1:
             centroid = valid_centroids[0]
@@ -218,7 +213,9 @@ class COPKMeans(BaseEstimator):
 
         if current_distance > 0.5 * min_distance:
             # Set the instance to the current centroid
-            logger.debug(f"Instance {idx} is too far from the current centroid {current_centroid}, ")
+            logger.debug(
+                f"Instance {idx} is too far from the current centroid {current_centroid}, "
+            )
             for centroid_index in valid_centroids:
                 logger.debug(f"Checking candidate {centroid_index} for instance {idx}")
                 candidate = self.centroids[centroid_index]
@@ -236,7 +233,8 @@ class COPKMeans(BaseEstimator):
 
                     if distance_to_candidate < distance_to_current_centroid:
                         logger.debug(
-                            f"Updating instance {idx} from centroid {self._labels[idx]} to {centroid_index}")
+                            f"Updating instance {idx} from centroid {self._labels[idx]} to {centroid_index}"
+                        )
                         self._labels[idx] = centroid_index
                         self._upper_bounds[idx] = distance_to_candidate
 
@@ -253,11 +251,15 @@ class COPKMeans(BaseEstimator):
         old = np.copy(self.centroids)
 
         for label in range(self.n_clusters):
-            self.centroids[label] = np.copy(self.X[np.where(self._labels == label)].mean(axis=0))
+            self.centroids[label] = np.copy(
+                self.X[np.where(self._labels == label)].mean(axis=0)
+            )
             logger.debug(f"Centroid {label} updated to {self.centroids[label]}")
 
             intracentroid_diff = self.centroids - self.centroids[label]
-            self._centroids_distance[:, label] = self.distance(intracentroid_diff, axis=1)
+            self._centroids_distance[:, label] = self.distance(
+                intracentroid_diff, axis=1
+            )
 
         if self._delta is None:
             self._delta = self.calculte_delta(old)
@@ -271,7 +273,7 @@ class COPKMeans(BaseEstimator):
             X (numpy.ndarray): Training instances to cluster.
         """
 
-        distance = self.distance(self._delta, axis = 1)
+        distance = self.distance(self._delta, axis=1)
 
         logger.debug(f"Updating bounds with delta: {distance}")
 

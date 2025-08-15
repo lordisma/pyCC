@@ -19,13 +19,12 @@ class SimpleConstraints:
         cl = np.absolute(cl)
         np.fill_diagonal(cl, 0)
 
-
-        self.__cl = net.from_numpy_array(cl, create_using = net.Graph)
-        self.__ml = net.from_numpy_array(ml, create_using = net.Graph)
+        self.__cl = net.from_numpy_array(cl, create_using=net.Graph)
+        self.__ml = net.from_numpy_array(ml, create_using=net.Graph)
         self.__matrix = np.copy(matrix)
 
     def propagate_ml(self):
-        for (i, paths) in net.shortest_path_length(self.__ml):
+        for i, paths in net.shortest_path_length(self.__ml):
             elements = list(filter(lambda j: i != j, paths.keys()))
 
             self.__matrix[i, elements] = 1
@@ -33,7 +32,7 @@ class SimpleConstraints:
         pass
 
     def propagate_cl(self):
-        for (i, paths) in net.shortest_path_length(self.__cl):
+        for i, paths in net.shortest_path_length(self.__cl):
             elements = list(filter(lambda j: i != j, paths.keys()))
 
             self.__matrix[i, elements] = -1
@@ -45,17 +44,17 @@ class SimpleConstraints:
 
     def __getitem__(self, pos):
         return self.__matrix[pos]
-    
+
     @property
     def matrix(self):
         return self.__matrix
-    
+
     @property
     def cl(self):
         return self.__cl
-    
+
     @property
     def ml(self):
         return self.__ml
-                
+
     pass

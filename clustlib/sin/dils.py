@@ -22,7 +22,7 @@ class DILS(BaseEstimator):
         probability=0.2,
         similarity_threshold=0.5,
         mutation_size=10,
-        local_search_max_iter=10
+        local_search_max_iter=10,
     ):
         self.init = init
         self.distance = match_distance(distance)
@@ -48,9 +48,7 @@ class DILS(BaseEstimator):
 
         This method initializes two chromosomes with random cluster assignments and calculates their fitness values.
         """
-        cromosomes = np.random.randint(
-            0, self.n_clusters, (2, self.X.shape[0])
-        )
+        cromosomes = np.random.randint(0, self.n_clusters, (2, self.X.shape[0]))
         self._fitness = np.empty(2)
         self._fitness[0] = self.get_single_fitness(cromosomes[0, :])
         self._fitness[1] = self.get_single_fitness(cromosomes[1, :])
@@ -73,7 +71,7 @@ class DILS(BaseEstimator):
         result = 0
 
         if self.n_clusters == 1:
-            result = pdist(self.X, metric = lambda u, v: self.distance(u - v))
+            result = pdist(self.X, metric=lambda u, v: self.distance(u - v))
             return result.mean()
 
         if len(labels) != self.X.shape[0]:
@@ -85,7 +83,9 @@ class DILS(BaseEstimator):
                 result += 0
                 continue
 
-            pdist_matrix = pdist(self.X[labels == j, :], metric = lambda u, v: self.distance(v - u)) 
+            pdist_matrix = pdist(
+                self.X[labels == j, :], metric=lambda u, v: self.distance(v - u)
+            )
             result += pdist_matrix.mean()
 
         return result / self.n_clusters if self.n_clusters > 0 else 0.0
@@ -107,7 +107,9 @@ class DILS(BaseEstimator):
 
             infeasability += np.sum(cromosome[ml_constraints] != cromosome[x])
 
-        return infeasability // 2  # Each must-link constraint is counted twice, once for each element in the pair.
+        return (
+            infeasability // 2
+        )  # Each must-link constraint is counted twice, once for each element in the pair.
 
     def cl_infeasability(self, cromosome):
         """
@@ -204,7 +206,7 @@ class DILS(BaseEstimator):
 
         random.shuffle(index_list)
 
-        for index in index_list[:self.local_search_max_iter]:
+        for index in index_list[: self.local_search_max_iter]:
             original_label = chromosome[index]
             labels = np.arange(self.n_clusters)
 
@@ -227,7 +229,7 @@ class DILS(BaseEstimator):
                 break
 
         return chromosome
-    
+
     def _update(self):
         new_chromosome = self.crossover(self.best, self.worst)
         mutant = self.mutation(new_chromosome)
@@ -250,11 +252,11 @@ class DILS(BaseEstimator):
 
         self._labels = self.best
         self.calculate_centroids()
-    
+
     def calculate_centroids(self):
         """
         Calculate the centroids of the clusters based on the current labels.
-        
+
         Returns:
             numpy.ndarray: The centroids of the clusters.
         """

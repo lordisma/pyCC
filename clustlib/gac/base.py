@@ -44,7 +44,7 @@ class GeneticClustering(BaseEstimator):
                 result += 10.0
                 continue
 
-            pdist_matrix = pdist(self.X[labels == j, :], metric='euclidean')
+            pdist_matrix = pdist(self.X[labels == j, :], metric="euclidean")
             result += pdist_matrix.mean()
 
         return result / self.n_clusters if self.n_clusters > 0 else np.Infinity
@@ -81,7 +81,7 @@ class GeneticClustering(BaseEstimator):
             centroids.append(np.mean(data_from_cluster, axis=0))
 
         return np.array(centroids)
-    
+
     def create_population(self):
         """Create the initial population for the genetic algorithm."""
         self.population = np.random.rand(self._population_size, self._dim)
