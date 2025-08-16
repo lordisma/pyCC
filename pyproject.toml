@@ -51,7 +51,7 @@ src_paths = ["clustlib", "tests"]
 
 [tool.black]
 line_length = 88
-target_version = ["py311"]
+target_version = ["py312"]
 exclude = '''
 (
   /(

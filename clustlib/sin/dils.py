@@ -133,9 +133,7 @@ class DILS(BaseEstimator):
 
             infeasability += np.sum(cromosome[ml_constraints] != cromosome[x])
 
-        return (
-            infeasability // 2
-        )  # Each must-link constraint is counted twice
+        return infeasability // 2  # Each must-link constraint is counted twice
 
     def cl_infeasability(self, cromosome):
         """Cannot-link infeasibility.

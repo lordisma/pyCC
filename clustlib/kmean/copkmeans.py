@@ -227,9 +227,7 @@ class COPKMeans(BaseEstimator):
 
         if current_distance > 0.5 * min_distance:
             # Set the instance to the current centroid
-            logger.debug(
-                f"Instance {idx} is too far from {current_centroid}"
-            )
+            logger.debug(f"Instance {idx} is too far from {current_centroid}")
             for centroid_index in valid_centroids:
                 logger.debug(f"Checking candidate {centroid_index} for instance {idx}")
                 candidate = self.centroids[centroid_index]
@@ -245,9 +243,7 @@ class COPKMeans(BaseEstimator):
                     distance_to_current_centroid = self.distance(instance - current)
 
                     if distance_to_candidate < distance_to_current_centroid:
-                        logger.debug(
-                            f"Updating instance {idx} to {centroid_index}"
-                        )
+                        logger.debug(f"Updating instance {idx} to {centroid_index}")
                         self._labels[idx] = centroid_index
                         self._upper_bounds[idx] = distance_to_candidate
 
