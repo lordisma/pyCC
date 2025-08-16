@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 class ShadeCC(GeneticClustering):
     """SHADE Clustering with Constraints (ShadeCC).
 
-    Adaptive genetic algorithm based on SHADE to solve clustering problems 
-    with constraints. It uses success history to dynamically adjust the 
+    Adaptive genetic algorithm based on SHADE to solve clustering problems
+    with constraints. It uses success history to dynamically adjust the
     parameters of differential evolution.
 
     Attributes:
@@ -23,7 +23,7 @@ class ShadeCC(GeneticClustering):
         max_iter (int): Maximum number of generations.
         tol (float): Convergence tolerance.
         constraints (ConstraintMatrix): Must-link and cannot-link constraints.
-        solution_archive (np.ndarray): External solution archive to maintain 
+        solution_archive (np.ndarray): External solution archive to maintain
             diversity.
 
     """
@@ -38,7 +38,7 @@ class ShadeCC(GeneticClustering):
         max_iter=300,
         tol=1e-4,
         custom_initial_centroids=None,
-        constraints: Sequence[Sequence] = None,
+        constraints: Sequence[Sequence] | None = None,
         population_size=20,
         memory_size=20,
     ):
@@ -53,7 +53,7 @@ class ShadeCC(GeneticClustering):
             constraints (Sequence[Sequence]): List of ML and CL constraints.
             population_size (int): Size of the genetic population.
             memory_size (int): Size of the memory to store successful solutions.
-            
+
         """
         self._delta_centroid = None
         self.n_clusters = n_clusters
@@ -137,7 +137,7 @@ class ShadeCC(GeneticClustering):
             parents_idx (np.ndarray): Indices of the selected parents.
 
         Returns:
-            Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]: Instances from 
+            Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]: Instances from
                 the population and the external archive.
 
         """
@@ -159,7 +159,7 @@ class ShadeCC(GeneticClustering):
 
         Returns:
             np.ndarray: Indices of the selected parents.
-            
+
         """
         idx = self.randint(0, self._population_size)
         idx_best = self.randint(0, self._num_elite, exclude=[idx])

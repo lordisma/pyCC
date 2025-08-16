@@ -14,22 +14,22 @@ logger = getLogger(__name__)
 
 class COPKMeans(BaseEstimator):
     """Constrained Partitioning K-Means (COP-KMeans) estimator.
-    
+
     KMeans estimator is a clustering algorithm that aims to partition n observations
     into k clusters in which each observation belongs to the cluster with the nearest
-    mean, serving as a prototype of the cluster. This results in a partitioning of 
+    mean, serving as a prototype of the cluster. This results in a partitioning of
     the data space into Voronoi cells.
 
     Attributes:
-        n_clusters (int, optional): The number of clusters to form as well as the 
+        n_clusters (int, optional): The number of clusters to form as well as the
             number of centroids to generate.
-        init (:str, optional): Method for initialization, defaults to 'random' choose 
-            k observations (rows) at random from data for the initial centroids. 
+        init (:str, optional): Method for initialization, defaults to 'random' choose
+            k observations (rows) at random from data for the initial centroids.
             'custom' use custom_initial_centroids as initial centroids.
         max_iter (int, optional): Maximum number of iterations of the k-means algorithm
             for a single run.
         tol (float, optional): Relative tolerance with regards to Frobenius norm of the
-            difference in the cluster centers of two consecutive iterations to declare 
+            difference in the cluster centers of two consecutive iterations to declare
             convergence.
         custom_initial_centroids (numpy.ndarray, optional): Custom initial centroids to
             be used in the initialization. Only used if init='custom'.
@@ -59,12 +59,12 @@ class COPKMeans(BaseEstimator):
 
     def initialize_bounds(self):
         """Initialize the lower and upper bounds for each instance.
-        
-        Calculate the distance to each of the centroids in the 
+
+        Calculate the distance to each of the centroids in the
         cluster. After that, it will assign the closest centroid to each instance and
         apply the constraints to make sure that the instances respect the limitations.
 
-        In case of conflict, the instance that is closer to the centroid will be kept, 
+        In case of conflict, the instance that is closer to the centroid will be kept,
         and the other will be moved to the next closest centroid.
 
         Note:
@@ -160,7 +160,7 @@ class COPKMeans(BaseEstimator):
     def get_centroids(self, idx):
         """Get the valid centroids for the instance.
 
-        This method checks the constraints for the instance and returns the valid 
+        This method checks the constraints for the instance and returns the valid
         centroids.
 
         Args:
@@ -256,7 +256,7 @@ class COPKMeans(BaseEstimator):
 
     def _update(self):
         """Update.
-        
+
         Get the instances belonging to each cluster and update the centroids,
         and upper and lower bounds.
 
@@ -310,7 +310,7 @@ class COPKMeans(BaseEstimator):
             idx (int): The instance index.
 
         Returns:
-            boolean: True if the candidate centroid is a valid option for the 
+            boolean: True if the candidate centroid is a valid option for the
             instance, False otherwise.
 
         """

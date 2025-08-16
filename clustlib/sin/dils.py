@@ -40,7 +40,7 @@ class DILS(BaseEstimator):
         max_iter=300,
         tol=1e-4,
         custom_init_centroids=None,
-        constraints: Sequence[Sequence] = None,
+        constraints: Sequence[Sequence] | None = None,
         probability=0.2,
         similarity_threshold=0.5,
         mutation_size=10,
@@ -67,7 +67,7 @@ class DILS(BaseEstimator):
     def initialize(self):
         """Initialize the chromosomes and their fitness values.
 
-        This method initializes two chromosomes with random cluster assignments and 
+        This method initializes two chromosomes with random cluster assignments and
         calculates their fitness values.
         """
         cromosomes = np.random.randint(0, self.n_clusters, (2, self.X.shape[0]))
@@ -81,7 +81,7 @@ class DILS(BaseEstimator):
     def _intra_cluster_distance(self, labels):
         """Calculate the intra-cluster distance.
 
-        This method calculates the average distance between all points in the same 
+        This method calculates the average distance between all points in the same
         cluster.
 
         Args:
@@ -115,8 +115,8 @@ class DILS(BaseEstimator):
 
     def ml_infeasability(self, cromosome):
         """Must-link infeasibility.
-        
-        Calculate the infeasibility of the current clustering based on must-link 
+
+        Calculate the infeasibility of the current clustering based on must-link
         constraints.
 
         Args:
@@ -139,8 +139,8 @@ class DILS(BaseEstimator):
 
     def cl_infeasability(self, cromosome):
         """Cannot-link infeasibility.
-        
-        Calculate the infeasibility of the current clustering based on cannot-link 
+
+        Calculate the infeasibility of the current clustering based on cannot-link
         constraints.
 
         Args:

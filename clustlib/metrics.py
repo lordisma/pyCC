@@ -1,9 +1,9 @@
 """Metrics module.
 
-This module contains some methods to calculate the infeasibility of a clustering. 
+This module contains some methods to calculate the infeasibility of a clustering.
 
-The infeasibility is a measure of how much the clustering violates the constraints. 
-It is one of the most important metrics to evaluate the quality of a clustering, 
+The infeasibility is a measure of how much the clustering violates the constraints.
+It is one of the most important metrics to evaluate the quality of a clustering,
 since it is the only one that takes into account the constraints.
 """
 
@@ -17,9 +17,9 @@ def infeasibility(
 ) -> float:
     """Infeasibility.
 
-    This method calculate the infeasibility of a clustering. The infeasibility is a 
-    measure of how much the clustering violates the constraints. It is one of the 
-    most important metrics to evaluate the quality of a clustering, since it is the 
+    This method calculate the infeasibility of a clustering. The infeasibility is a
+    measure of how much the clustering violates the constraints. It is one of the
+    most important metrics to evaluate the quality of a clustering, since it is the
     only one that takes into account the constraints.
 
     Args:

@@ -3,9 +3,9 @@
 from . import fuzzy, gac, kmean, nonparam, sin
 
 __all__ = [
-    "kmean",
-    "sin",
+    "fuzzy",
     "gac",
+    "kmean",
     "nonparam",
-    "fuzzy"
+    "sin"
 ]

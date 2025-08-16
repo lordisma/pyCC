@@ -16,18 +16,18 @@ class ElkanKMeans(KMeans):
         """Initialize lower and upper bounds for each instance.
 
         This method will calculate the distance to each of the centroids in the cluster.
-        After that, it will assign the closest centroid to each instance and apply the 
+        After that, it will assign the closest centroid to each instance and apply the
         constraints to make sure that the instances respect the limitations.
 
-        In case of conflict, the instance that is closer to the centroid will be kept, 
+        In case of conflict, the instance that is closer to the centroid will be kept,
         and the other will be moved to the next closest centroid.
 
-        NOTE: This method applies the constraints in a soft manner. Which means that 
+        NOTE: This method applies the constraints in a soft manner. Which means that
         the instances might be missclassified after the initialization.
 
         Attributes:
             dataset (numpy.ndarray): Training instances to cluster.
-            bounds (Tuple[numpy.ndarray, numpy.ndarray]): Lower and Upper bounds for 
+            bounds (Tuple[numpy.ndarray, numpy.ndarray]): Lower and Upper bounds for
                 each instance.
 
         """

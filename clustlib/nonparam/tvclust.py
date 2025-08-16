@@ -14,61 +14,61 @@ logger = logging.getLogger(__name__)
 
 class TVClust(BaseEstimator):
     """TVClust.
-    
+
     A constrained variational Bayesian clustering algorithm based on a
     truncated Dirichlet Process mixture model (TVClust).
 
     Attributes:
-        cov_inverse (np.ndarray): The scale matrix of the Wishart distribution 
+        cov_inverse (np.ndarray): The scale matrix of the Wishart distribution
             associated with each cluster.
             Shape: (n_clusters, p, p), where:
                 - n_clusters is the number of mixture components (clusters).
                 - p is the dimensionality of the data.
             Interpretation: For each cluster k, `W[k]` defines the scale matrix of the
-            Wishart distribution used as a prior (or variational posterior) over the 
+            Wishart distribution used as a prior (or variational posterior) over the
             precision matrix (inverse covariance) of the Gaussian component.
 
-        responsabilities (np.ndarray): The responsibilities of each cluster for each 
+        responsabilities (np.ndarray): The responsibilities of each cluster for each
             instance.
             Shape: (n_instances, n_clusters), where:
                 - n_instances is the number of data points.
                 - n_clusters is the number of mixture components (clusters).
-            Interpretation: Each entry `responsabilities[i, k]` represents the 
+            Interpretation: Each entry `responsabilities[i, k]` represents the
             probability that instance `i` belongs to cluster `k`.
 
         mu (np.ndarray): The mean vector of the Gaussian component for each cluster.
             Shape: (n_clusters, p) where:
                 - n_clusters is the number of mixture components (clusters).
                 - p is the dimensionality of the data.
-            Interpretation: For cluster k, `mu[k]` represents the expected location of 
-            the data in p-dimensional space. Updated using a precision-weighted average 
+            Interpretation: For cluster k, `mu[k]` represents the expected location of
+            the data in p-dimensional space. Updated using a precision-weighted average
             between prior and data responsibilities.
 
-        nu (np.ndarray): The degrees of freedom of the Wishart distribution for each 
+        nu (np.ndarray): The degrees of freedom of the Wishart distribution for each
             cluster.
             Shape: (n_clusters,) where:
                 - n_clusters is the number of mixture components (clusters).
             Interpretation: Controls the expected variability of the precision matrix.
-            Larger `nu[k]` implies more confidence (tighter distribution) around 
+            Larger `nu[k]` implies more confidence (tighter distribution) around
             `cov_inverse[k]`.
 
-        beta (np.ndarray): The scaling parameter of the Gaussian mean distribution for 
+        beta (np.ndarray): The scaling parameter of the Gaussian mean distribution for
             each cluster.
             Shape: (n_clusters,) where:
                 - n_clusters is the number of mixture components (clusters).
-            Interpretation: Acts as a pseudo-count indicating the strength of belief 
-            in the mean `mu[k]`. Affects the variance of the mean estimate; larger 
+            Interpretation: Acts as a pseudo-count indicating the strength of belief
+            in the mean `mu[k]`. Affects the variance of the mean estimate; larger
             `beta[k]` implies lower variance.
 
-        gamma (np.ndarray): The variational parameters of the stick-breaking Beta 
+        gamma (np.ndarray): The variational parameters of the stick-breaking Beta
             distributions over cluster weights.
             Shape: (n_clusters - 1, 2) where:
                 - n_clusters is the number of mixture components (clusters).
-                - Each row corresponds to a Beta distribution parameterized by 
+                - Each row corresponds to a Beta distribution parameterized by
                     two values (alpha, beta).
-            Interpretation: Each row `gamma[k] = [a, b]` encodes the Beta distribution 
-            for the stick-breaking variable `v_k`, which defines the prior weight of 
-            cluster k. These parameters are used to construct the variational 
+            Interpretation: Each row `gamma[k] = [a, b]` encodes the Beta distribution
+            for the stick-breaking variable `v_k`, which defines the prior weight of
+            cluster k. These parameters are used to construct the variational
             approximation of the Dirichlet Process.
 
     """
@@ -137,10 +137,10 @@ class TVClust(BaseEstimator):
 
     def concentration(self):
         """Concentration of the clusters.
-        
+
         Measure is used to determine how "concentrated" a Gaussian component
-        (cluster) is around its mean. It is calculated as the sum of the squared 
-        Mahalanobis distances between each data point and the mean of the cluster, 
+        (cluster) is around its mean. It is calculated as the sum of the squared
+        Mahalanobis distances between each data point and the mean of the cluster,
         weighted by the probability of each data point belonging to that cluster.
         """
         p = self.X.shape[1]
@@ -198,7 +198,7 @@ class TVClust(BaseEstimator):
         """Compute the posterior mean muQ[k] for cluster k.
 
         Note:
-        The N_k is the number of points in the cluster k, however, since it appears in 
+        The N_k is the number of points in the cluster k, however, since it appears in
         the denominator and the numerator it cancels out, so we can ignore it.
 
         """
@@ -253,14 +253,14 @@ class TVClust(BaseEstimator):
 
     def ml_correction(self):
         """Calculate the correction for must-link constraints.
-        
-        Calculate the correction factor for the responsibilities based on the 
-        must-link constraints. This is derived from the posterior parameters of 
+
+        Calculate the correction factor for the responsibilities based on the
+        must-link constraints. This is derived from the posterior parameters of
         the Beta distribution modeling the reliability of must-link constraints.
 
         Returns:
             float: The correction factor for must-link constraints.
-        
+
         """
         phi_alpha_beta_p = phi(self.__ml_success_prior + self.__ml_error_prior)
         phi_alpha = phi(self.__ml_success_prior)
@@ -271,14 +271,14 @@ class TVClust(BaseEstimator):
 
     def cl_correction(self):
         """Calculate the correction for cannot-link constraints.
-        
-        Calculate the correction factor for the responsibilities based on the 
-        cannot-link constraints. This is derived from the posterior parameters of 
+
+        Calculate the correction factor for the responsibilities based on the
+        cannot-link constraints. This is derived from the posterior parameters of
         the Beta distribution modeling the reliability of cannot-link constraints.
 
         Returns:
             float: The correction factor for cannot-link constraints.
-        
+
         """
         phi_alpha_beta_p = phi(self.__ml_success_prior + self.__ml_error_prior)
         phi_alpha = phi(self.__cl_success_prior)
@@ -289,7 +289,7 @@ class TVClust(BaseEstimator):
 
     def constraints_correction(self):
         """Apply a correction based on the constraints.
-        
+
         Apply an adjustment to the responsibilities based on the constraints.
         """
         constraints = np.copy(self.constraints)  # (n_clusters,)
@@ -303,12 +303,12 @@ class TVClust(BaseEstimator):
 
     def update_responsabilities(self):
         """Update the responsibilities of the clusters.
-        
-        Update the responsibilities of each cluster based on the current model 
-        parameters, including the must-link and cannot-link constraints. The 
-        responsibilities are calculated using the sticky breaking process (SBP) 
+
+        Update the responsibilities of each cluster based on the current model
+        parameters, including the must-link and cannot-link constraints. The
+        responsibilities are calculated using the sticky breaking process (SBP)
         and the constraints correction.
-        
+
         """
         self.__responsabilities = np.clip(
             np.exp(self.sbp() + self.constraints_correction()),
@@ -335,7 +335,7 @@ class TVClust(BaseEstimator):
 
     def update_prior(self):
         """Update the prior parameters.
-        
+
         Update the posterior parameters of the Beta distributions used to model
         the reliability of must-link and cannot-link constraints.
 
@@ -351,16 +351,16 @@ class TVClust(BaseEstimator):
         - Cannot-link success   (constraint ≠ 1, different clusters)
         - Cannot-link error     (constraint = 1, different clusters)
 
-        It computes the "distance" between instances using the inner product of 
-        responsibilities (i.e., probability of co-clustering) and adjusts the 
+        It computes the "distance" between instances using the inner product of
+        responsibilities (i.e., probability of co-clustering) and adjusts the
         shape parameters accordingly.
 
         Notes:
-            This step is part of the variational inference procedure in TVClust, where 
+            This step is part of the variational inference procedure in TVClust, where
             Beta-distributed latent variables represent the probability of observing
             a correct or incorrect constraint.
-            
-            Posterior updates incorporate both soft evidence from clustering and prior 
+
+            Posterior updates incorporate both soft evidence from clustering and prior
             beliefs.
 
         """
@@ -468,7 +468,7 @@ class TVClust(BaseEstimator):
 
     def compute_expected_log_prior(self, cluster, concentration):
         """Compute the expected log prior for a cluster.
-        
+
         Args:
             cluster (int): Index of the cluster.
             concentration (float): Concentration parameter for the cluster.
@@ -499,11 +499,11 @@ class TVClust(BaseEstimator):
 
     def entropy_sbp(self):
         """Entropy of the stick-breaking process.
-        
-        Compute the entropy contribution of the stick-breaking process over the 
-        cluster weights. This is derived from the Beta distributions used to model 
+
+        Compute the entropy contribution of the stick-breaking process over the
+        cluster weights. This is derived from the Beta distributions used to model
         the cluster weights in the Dirichlet Process.
-        
+
         Returns:
             total (float): Sum of entropies for all clusters.
 
@@ -522,7 +522,7 @@ class TVClust(BaseEstimator):
     def entropy_wishart(self):
         """Entropy of the Wishart distributions.
 
-        Compute the entropy contribution of the Wishart distributions over the 
+        Compute the entropy contribution of the Wishart distributions over the
         precision matrices of all clusters.
 
         Returns:
@@ -566,12 +566,12 @@ class TVClust(BaseEstimator):
 
     def penalty_constraints(self):
         """Calculate the penalty for the constraints.
-        
+
         This method computes the expected penalties for the must-link and cannot-link
         constraints based on the current model parameters. It uses the Beta distribution
-        parameters to calculate the expected values of the constraints and their 
+        parameters to calculate the expected values of the constraints and their
         inverses.
-        
+
         Returns:
             float: The total penalty for the constraints.
 
@@ -613,16 +613,16 @@ class TVClust(BaseEstimator):
 
     def initialize_parameters(self):
         """Initialize the parameters for the TVClust model.
-        
+
         Initializes the model parameters such as responsibilities, covariance inverse,
-        means, and degrees of freedom based on the input data and the number of 
-        clusters. This method is called at the beginning of the fitting process to 
+        means, and degrees of freedom based on the input data and the number of
+        clusters. This method is called at the beginning of the fitting process to
         set up the initial state of the model.
-        
+
         """
         if self.X is None:
             raise ValueError("Data X must be provided before initializing parameters.")
-        
+
         n, p = self.X.shape
 
         logger.debug(
@@ -651,7 +651,7 @@ class TVClust(BaseEstimator):
 
     def calculte_delta(self, _):
         """Calculate the delta value for convergence checking.
-        
+
         This method computes the change in the model's log-likelihood or other
         relevant metrics between iterations. It is used to determine if the model
         has converged based on the specified tolerance level.
@@ -667,7 +667,7 @@ class TVClust(BaseEstimator):
 
     def update(self):
         """Override the update method.
-        
+
         Updates the responsibilities and model parameters, including the
         must-link and cannot-link constraints. This method is called iteratively
         during the fitting process to refine the model parameters based on the
@@ -700,8 +700,8 @@ class TVClust(BaseEstimator):
 
     def _mean_position(self):
         """Mean postion.
-        
-        Calculate the mean_position of the cluster based on the current 
+
+        Calculate the mean_position of the cluster based on the current
         responsibilities. Update the `self.mean_position` attribute with
         the mean of the data points
         """

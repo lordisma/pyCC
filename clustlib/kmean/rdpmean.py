@@ -14,17 +14,17 @@ class RDPM(BaseEstimator):
     Args:
         constraints (numpy.ndarray): The constraints matrix.
         n_clusters (int, optional): The number of clusters to form. Defaults to 8.
-        init (str, optional): Initialization method ('random' or 'custom'). 
+        init (str, optional): Initialization method ('random' or 'custom').
             Defaults to 'random'.
-        distance (str, optional): Distance metric ('euclidean', 'manhattan', 'cosine'). 
+        distance (str, optional): Distance metric ('euclidean', 'manhattan', 'cosine').
             Defaults to 'euclidean'.
-        custom_initial_centroids (numpy.ndarray, optional): Custom initial centroids. 
+        custom_initial_centroids (numpy.ndarray, optional): Custom initial centroids.
             Used if init='custom'. Defaults to None.
         tol (float, optional): Convergence tolerance. Defaults to 1e-4.
         max_iter (int, optional): Maximum number of iterations. Defaults to 300.
-        limit (float, optional): Distance limit for creating new clusters. 
+        limit (float, optional): Distance limit for creating new clusters.
             Defaults to 1.
-        x0 (float, optional): Initial value of xi for preventing new clusters. 
+        x0 (float, optional): Initial value of xi for preventing new clusters.
             Defaults to 0.001.
         rate (float, optional): Rate of increase of xi. Defaults to 2.0.
 
@@ -63,9 +63,9 @@ class RDPM(BaseEstimator):
     def diff_alliances(self, d, c) -> int:
         """Calculate the difference of alliances.
 
-        Calculates the "friends" and "strangers" for the instance `d` in the 
-        cluster `c`. Friends are instances that are positively constrained with `d`, 
-        and strangers are instances that are negatively constrained with `d`. The 
+        Calculates the "friends" and "strangers" for the instance `d` in the
+        cluster `c`. Friends are instances that are positively constrained with `d`,
+        and strangers are instances that are negatively constrained with `d`. The
         difference is calculated as the number of friends minus the number of strangers
         in the cluster.
 

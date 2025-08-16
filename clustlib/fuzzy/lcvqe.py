@@ -25,15 +25,15 @@ class LCVQE(BaseEstimator):
     """Local Constrained Variational Quantum Estimation (LCVQE).
 
     Attributes:
-        n_clusters (int, optional): The number of clusters to form as well as the 
+        n_clusters (int, optional): The number of clusters to form as well as the
             number of centroids to generate.
-        init (:str, optional): Method for initialization, defaults to 'random' choose 
-            k observations (rows) at random from data for the initial centroids. 
+        init (:str, optional): Method for initialization, defaults to 'random' choose
+            k observations (rows) at random from data for the initial centroids.
             'custom' use custom_initial_centroids as initial centroids.
-        max_iter (int, optional): Maximum number of iterations of the k-means algorithm 
+        max_iter (int, optional): Maximum number of iterations of the k-means algorithm
             for a single run.
-        tol (float, optional): Relative tolerance with regards to Frobenius norm of 
-            the difference in the cluster centers of two consecutive iterations to 
+        tol (float, optional): Relative tolerance with regards to Frobenius norm of
+            the difference in the cluster centers of two consecutive iterations to
             declare convergence.
         custom_initial_centroids (numpy.ndarray, optional): Custom initial centroids to
             be used in the initialization. Only used if init='custom'.
@@ -86,7 +86,7 @@ class LCVQE(BaseEstimator):
         """Get the must-link cases for the instance.
 
         Returns:
-            ml_cases (List[Tuple[int, int]]): List of tuples where each tuple contains 
+            ml_cases (List[Tuple[int, int]]): List of tuples where each tuple contains
                 the indices of the instances that must be linked.
 
         """
@@ -148,7 +148,7 @@ class LCVQE(BaseEstimator):
 
     def _check_cl_cases(self):
         """Check cannot-link cases.
-        
+
         This method iterates through the cannot-link constraints and checks if the
         instances that cannot be linked are assigned to the same cluster. If they are
         not, it will reassign them to the closest centroid based on the distance

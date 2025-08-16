@@ -9,8 +9,8 @@ from clustlib.model import BaseEstimator
 class GeneticClustering(BaseEstimator):
     """GeneticClustering.
 
-    Create the base class for the genetic clustering algorithms. This class will 
-    abstract common methods to all genetic algorithms like fitness evaluation, 
+    Create the base class for the genetic clustering algorithms. This class will
+    abstract common methods to all genetic algorithms like fitness evaluation,
     selection, crossover, infeasibility calculation, etc.
     """
 

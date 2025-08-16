@@ -81,7 +81,9 @@ target-version = "py312"
 select = [
     "E", # pydocs errors
     "F", # flake8 errors
-    "D"
+    "D",
+    "W",
+    "RUF"
 ]
 fixable = ["ALL"]
 ignore = [

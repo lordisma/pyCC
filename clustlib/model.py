@@ -4,7 +4,7 @@ Contains a BaseEstimator which provides the base's class for the rest
 of the estimator.
 
 There is no intention to use this class directly, but to be inherited by other classes.
-Implementation is based on scikit-learn's BaseEstimator in order to facilitate the 
+Implementation is based on scikit-learn's BaseEstimator in order to facilitate the
 integration with the library.
 """
 
@@ -28,8 +28,8 @@ class BaseEstimator(ABC, SklearnBaseEstimator):
         labels_ (numpy.ndarray): Labels of the dataset.
 
     Notes:
-        All estimators should specify all the parameters that can be set at the class 
-        level in their `__init__` as explicit keyword 
+        All estimators should specify all the parameters that can be set at the class
+        level in their `__init__` as explicit keyword
         arguments (no `*args` or `**kwargs`).
 
     """
@@ -52,9 +52,9 @@ class BaseEstimator(ABC, SklearnBaseEstimator):
 
         Args:
             dataset (numpy.ndarray): The data to cluster.
-            labels (numpy.ndarray, optional): Ignored. This parameter exists only for 
+            labels (numpy.ndarray, optional): Ignored. This parameter exists only for
                 compatibility with the sklearn API.
-                
+
         Returns:
             BaseEstimator: The fitted estimator.
 
@@ -85,7 +85,7 @@ class BaseEstimator(ABC, SklearnBaseEstimator):
 
         Args:
             dataset (numpy.ndarray): The data to cluster.
-            labels (numpy.ndarray, optional): Ignored. This parameter exists only for 
+            labels (numpy.ndarray, optional): Ignored. This parameter exists only for
                 compatibility with the sklearn API.
 
         Returns:
@@ -125,9 +125,9 @@ class BaseEstimator(ABC, SklearnBaseEstimator):
     def update(self):
         """Update the centroids of the clusters.
 
-        This method calls the `_update` method to update the centroids of the clusters. 
-        It also updates the `_delta` attribute with the difference between the new and 
-        old centroids. The `_delta` attribute is a numpy array with the same shape as 
+        This method calls the `_update` method to update the centroids of the clusters.
+        It also updates the `_delta` attribute with the difference between the new and
+        old centroids. The `_delta` attribute is a numpy array with the same shape as
         the centroids and is used to determine when the algorithm has converged.
         """
         aux = np.copy(self.centroids)
@@ -159,7 +159,7 @@ class BaseEstimator(ABC, SklearnBaseEstimator):
             iteration (int): The current iteration of the algorithm.
 
         Returns:
-            bool: True if the algorithm has reached the stopping criteria, 
+            bool: True if the algorithm has reached the stopping criteria,
                 False otherwise.
 
         """
