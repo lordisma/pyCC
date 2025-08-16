@@ -10,22 +10,25 @@ logger = logging.getLogger(__name__)
 
 
 class BRKGA(GeneticClustering):
-    """BRKGA (Biased Random-Key Genetic Algorithm) es un algoritmo genético adaptado al clustering con restricciones.
-    Utiliza una codificación basada en claves aleatorias (random keys) para representar soluciones y operadores genéticos
-    sesgados para generar nuevas poblaciones que optimizan la partición de datos.
+    """BRKGA (Biased Random-Key Genetic Algorithm).
 
-    Este algoritmo hereda de la clase base GeneticClustering.
+    BRKGA is a genetic algorithm adapted for clustering with constraints.
+    It uses a random-key encoding to represent solutions and biased genetic operators
+    to generate new populations that optimize data partitioning.
 
-    Atributos:
-        n_clusters (int): Número de clusters objetivo.
-        init (str): Método de inicialización de centroides.
-        max_iter (int): Máximo número de iteraciones.
-        tol (float): Tolerancia para criterio de convergencia.
-        constraints (Sequence[Sequence]): Restricciones must-link y cannot-link.
-        population_size (int): Tamaño de la población genética.
-        percentage_elite (float): Porcentaje de individuos considerados elite.
-        probability_mutation (float): Porcentaje de mutantes en cada generación.
-        pbt_inherit (float): Probabilidad de herencia en el operador de cruce.
+    This algorithm inherits from the base class GeneticClustering.
+
+    Attributes:
+        n_clusters (int): Number of target clusters.
+        init (str): Method for initializing centroids.
+        max_iter (int): Maximum number of iterations.
+        tol (float): Tolerance for the convergence criterion.
+        constraints (Sequence[Sequence]): Must-link and cannot-link constraints.
+        population_size (int): Size of the genetic population.
+        percentage_elite (float): Percentage of individuals considered elite.
+        probability_mutation (float): Percentage of mutants in each generation.
+        pbt_inherit (float): Probability of inheritance in the crossover operator.
+
     """
 
     def __init__(
@@ -79,15 +82,15 @@ class BRKGA(GeneticClustering):
         return np.linalg.norm(self._delta) < self.tol
 
     def _fit(self):
-        """Ajusta el modelo BRKGA a los datos dados.
+        """Fits the BRKGA model to the given data.
 
         Args:
-            X (ndarray): Matriz de datos de entrada.
-            y (ndarray, optional): Etiquetas reales si están disponibles (no utilizado).
-            logger (Logger, optional): Objeto de logging para seguimiento del proceso.
+            X (ndarray): Input data matrix.
+            y (ndarray, optional): True labels if available (not used).
+            logger (Logger, optional): Logging object for process tracking.
 
         Returns:
-            self: Objeto ajustado.
+            self: Fitted object.
 
         """
         self.create_population()

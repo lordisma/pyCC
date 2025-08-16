@@ -12,17 +12,19 @@ logger = logging.getLogger(__name__)
 class ShadeCC(GeneticClustering):
     """SHADE Clustering with Constraints (ShadeCC).
 
-    Algoritmo genético adaptativo basado en SHADE para resolver problemas de clustering con restricciones.
-    Utiliza historia de éxito para ajustar dinámicamente los parámetros de evolución diferencial.
+    Adaptive genetic algorithm based on SHADE to solve clustering problems 
+    with constraints. It uses success history to dynamically adjust the 
+    parameters of differential evolution.
 
     Attributes:
-        population_size (int): Número de soluciones en la población genética.
-        n_clusters (int): Número de clusters objetivo.
-        init (str): Método de inicialización de centroides.
-        max_iter (int): Número máximo de generaciones.
-        tol (float): Tolerancia de convergencia.
-        constraints (ConstraintMatrix): Restricciones must-link y cannot-link.
-        solution_archive (np.ndarray): Archivo externo de soluciones para mantener diversidad.
+        population_size (int): Number of solutions in the genetic population.
+        n_clusters (int): Target number of clusters.
+        init (str): Method for initializing centroids.
+        max_iter (int): Maximum number of generations.
+        tol (float): Convergence tolerance.
+        constraints (ConstraintMatrix): Must-link and cannot-link constraints.
+        solution_archive (np.ndarray): External solution archive to maintain 
+            diversity.
 
     """
 
@@ -40,17 +42,18 @@ class ShadeCC(GeneticClustering):
         population_size=20,
         memory_size=20,
     ):
-        """Inicializa el algoritmo SHADE para clustering con restricciones.
+        """Initialize the SHADE algorithm for clustering with constraints.
 
         Args:
-            n_clusters (int): Número de clusters a generar.
-            init (str): Método de inicialización de centroides.
-            max_iter (int): Número máximo de iteraciones.
-            tol (float): Tolerancia para la convergencia.
-            custom_initial_centroids (Optional[np.ndarray]): Centroides definidos por el usuario.
-            constraints (Sequence[Sequence]): Lista de restricciones ML y CL.
-            population_size (int): Tamaño de la población genética.
-
+            n_clusters (int): Number of clusters to generate.
+            init (str): Method for initializing centroids.
+            max_iter (int): Maximum number of iterations.
+            tol (float): Tolerance for convergence.
+            custom_initial_centroids (Optional[np.ndarray]): User-defined centroids.
+            constraints (Sequence[Sequence]): List of ML and CL constraints.
+            population_size (int): Size of the genetic population.
+            memory_size (int): Size of the memory to store successful solutions.
+            
         """
         self._delta_centroid = None
         self.n_clusters = n_clusters
@@ -71,16 +74,16 @@ class ShadeCC(GeneticClustering):
 
     @staticmethod
     def randint(low, high=None, size=None, exclude=None):
-        """Genera un número entero aleatorio, excluyendo ciertos valores.
+        """Generate a random integer, excluding certain values.
 
         Args:
-            low (int): Límite inferior del rango.
-            high (int, optional): Límite superior del rango.
-            size (int, optional): Número de valores a generar.
-            exclude (Sequence[int], optional): Valores a excluir del rango.
+            low (int): Lower bound of the range.
+            high (int, optional): Upper bound of the range.
+            size (int, optional): Number of values to generate.
+            exclude (Sequence[int], optional): Values to exclude from the range.
 
         Returns:
-            np.ndarray: Array de enteros aleatorios excluyendo los valores especificados.
+            np.ndarray: Array of random integers excluding the specified values.
 
         """
         if exclude is None:
@@ -109,13 +112,14 @@ class ShadeCC(GeneticClustering):
         return self
 
     def create_population(self):
+        """Create the initial population of solutions."""
         super().create_population()
 
         self._next_population = np.zeros(self.population.shape)
         self._next_population_fitness = np.zeros(self._population_size)
 
     def create_archive(self):
-        """Inicializa el archivo externo de soluciones."""
+        """Initialize the external solution archive."""
         if self.solution_archive is None:
             self.solution_archive = np.zeros((0, self._dim))
         else:
@@ -127,13 +131,14 @@ class ShadeCC(GeneticClustering):
         self._memory_F = np.full(self.memory_size, 0.5)
 
     def get_instances(self, parents_idx):
-        """Obtiene las instancias de la población y el archivo externo.
+        """Retrieve instances from the population and the external archive.
 
         Args:
-            parents_idx (np.ndarray): Índices de los padres seleccionados.
+            parents_idx (np.ndarray): Indices of the selected parents.
 
         Returns:
-            Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]: Instancias de la población y del archivo externo.
+            Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]: Instances from 
+                the population and the external archive.
 
         """
         (idx, best, r1, r2) = parents_idx
@@ -150,11 +155,11 @@ class ShadeCC(GeneticClustering):
         )
 
     def select_parents(self):
-        """Selecciona padres desde la población y el archivo externo.
+        """Select parents from the population and the external archive.
 
         Returns:
-            np.ndarray: Index to the parents selected.
-
+            np.ndarray: Indices of the selected parents.
+            
         """
         idx = self.randint(0, self._population_size)
         idx_best = self.randint(0, self._num_elite, exclude=[idx])
@@ -168,15 +173,15 @@ class ShadeCC(GeneticClustering):
         return np.array([idx, idx_best, idx_r1, idx_r2])
 
     def crossover(self, parents, f_i, cr_i):
-        """Realiza cruce diferencial entre múltiples padres.
+        """Perform differential crossover among multiple parents.
 
         Args:
-            parents (np.ndarray): Soluciones padre [elemento, best, r1, r2].
-            f_i (float): Factor de escala.
-            cr_i (float): Tasa de cruce.
+            parents (np.ndarray): Parent solutions [element, best, r1, r2].
+            f_i (float): Scaling factor.
+            cr_i (float): Crossover rate.
 
         Returns:
-            np.ndarray: Cromosoma mutante generado.
+            np.ndarray: Generated mutant chromosome.
 
         """
         element, best, r1, r2 = self.get_instances(parents)
@@ -190,12 +195,12 @@ class ShadeCC(GeneticClustering):
         return np.where(cross_points, mutant, element)
 
     def save_adaptive(self, delta_fitness, cr_i, f_i):
-        """Guarda los parámetros exitosos para adaptación futura.
+        """Save successful parameters for future adaptation.
 
         Args:
-            delta_fitness (float): Mejora obtenida en fitness.
-            cr_i (float): Tasa de cruce usada.
-            f_i (float): Factor de escala usado.
+            delta_fitness (float): Improvement obtained in fitness.
+            cr_i (float): Crossover rate used.
+            f_i (float): Scaling factor used.
 
         """
         self._sf = np.append(self._sf, f_i)
@@ -203,7 +208,7 @@ class ShadeCC(GeneticClustering):
         self.fitness_delta = np.append(self.fitness_delta, delta_fitness)
 
     def update_adaptive(self):
-        """Actualiza los historiales H_CR y H_F con medias ponderadas."""
+        """Update the H_CR and H_F histories with weighted averages."""
         k = np.random.randint(0, self.memory_size)
         mean_wa = np.average(self.fitness_delta, weights=self._s_cr)
         self._memory_CR[k] = np.clip(mean_wa, 0.0, 1.0)
@@ -213,10 +218,10 @@ class ShadeCC(GeneticClustering):
         self._memory_F[k] = np.clip(mean_wl, a_min=0.0, a_max=1.0)
 
     def create_adaptive_parameter(self):
-        """Genera nuevos parámetros CR y F adaptativos.
+        """Generate new adaptive parameters CR and F.
 
         Returns:
-            Tuple[float, float]: Par de (CR, F) adaptados.
+            Tuple[float, float]: Pair of adapted (CR, F).
 
         """
         r_i = np.random.randint(0, self.memory_size)
@@ -231,10 +236,10 @@ class ShadeCC(GeneticClustering):
         return cr_i, f_i
 
     def mutation(self):
-        """Genera mutación sobre el individuo actual.
+        """Generate mutation on the current individual.
 
         Returns:
-            Tuple[np.ndarray, float, float]: Mutante, cr_i y f_i generados.
+            Tuple[np.ndarray, float, float]: Generated mutant, cr_i, and f_i.
 
         """
         parents = self.select_parents()
@@ -243,15 +248,15 @@ class ShadeCC(GeneticClustering):
         return mutant, cr_i, f_i
 
     def _update(self):
-        """Entrena el algoritmo SHADE sobre los datos.
+        """Trains the SHADE algorithm on the data.
 
         Args:
-            X (np.ndarray): Matriz de datos de entrada.
-            y (np.ndarray, optional): Etiquetas reales si están disponibles.
-            logger (Any, optional): Objeto para logging del entrenamiento.
+            X (np.ndarray): Input data matrix.
+            y (np.ndarray, optional): True labels if available.
+            logger (Any, optional): Object for logging the training process.
 
         Returns:
-            ShadeCC: Instancia entrenada del modelo.
+            ShadeCC: Trained instance of the model.
 
         """
         self._s_cr = np.zeros((0, 0))

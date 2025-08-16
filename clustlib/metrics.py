@@ -1,6 +1,10 @@
-"""This module contains some methods to calculate the infeasibility of a clustering. The infeasibility is a measure of how
-much the clustering violates the constraints. It is one of the most important metrics to evaluate the quality of a
-clustering, since it is the only one that takes into account the constraints.
+"""Metrics module.
+
+This module contains some methods to calculate the infeasibility of a clustering. 
+
+The infeasibility is a measure of how much the clustering violates the constraints. 
+It is one of the most important metrics to evaluate the quality of a clustering, 
+since it is the only one that takes into account the constraints.
 """
 
 from typing import Sequence, SupportsIndex
@@ -13,21 +17,17 @@ def infeasibility(
 ) -> float:
     """Infeasibility.
 
-    This method calculate the infeasibility of a clustering. The infeasibility is a measure of how much the clustering
-    violates the constraints. It is one of the most important metrics to evaluate the quality of a clustering, since it
-    is the only one that takes into account the constraints.
+    This method calculate the infeasibility of a clustering. The infeasibility is a 
+    measure of how much the clustering violates the constraints. It is one of the 
+    most important metrics to evaluate the quality of a clustering, since it is the 
+    only one that takes into account the constraints.
 
-    Parameters
-    ----------
-    clustering: Sequence[Sequence[SupportsIndex]]
-        The clustering to evaluate
-    constraints: Sequence[Sequence]
-        The constraints to evaluate
+    Args:
+        clustering (Sequence[Sequence[SupportsIndex]]): The clustering to evaluate
+        constraints (Sequence[Sequence]): The constraints to evaluate
 
-    Returns
-    -------
-    float
-        The infeasibility of the clustering
+    Returns:
+        float: The infeasibility of the clustering
 
     """
     total: int = 0
@@ -45,17 +45,12 @@ def violates_constraints(
 
     This method calculated the number of constraints violated by a cluster.
 
-    Parameters
-    ----------
-    cluster: Sequence[SupportsIndex]
-        The cluster to evaluate
-    constraints: Sequence[Sequence]
-        The constraints to evaluate
+    Args:
+        cluster (Sequence[SupportsIndex]): The cluster to evaluate
+        constraints (Sequence[Sequence]): The constraints to evaluate
 
-    Returns
-    -------
-    int
-        The number of constraints violated by the cluster
+    Returns:
+        int: The number of constraints violated by the cluster
 
     """
     linked_mtx = constraints[cluster][:, cluster]

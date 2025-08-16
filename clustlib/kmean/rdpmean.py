@@ -14,13 +14,18 @@ class RDPM(BaseEstimator):
     Args:
         constraints (numpy.ndarray): The constraints matrix.
         n_clusters (int, optional): The number of clusters to form. Defaults to 8.
-        init (str, optional): Initialization method ('random' or 'custom'). Defaults to 'random'.
-        distance (str, optional): Distance metric ('euclidean', 'manhattan', 'cosine'). Defaults to 'euclidean'.
-        custom_initial_centroids (numpy.ndarray, optional): Custom initial centroids. Used if init='custom'. Defaults to None.
+        init (str, optional): Initialization method ('random' or 'custom'). 
+            Defaults to 'random'.
+        distance (str, optional): Distance metric ('euclidean', 'manhattan', 'cosine'). 
+            Defaults to 'euclidean'.
+        custom_initial_centroids (numpy.ndarray, optional): Custom initial centroids. 
+            Used if init='custom'. Defaults to None.
         tol (float, optional): Convergence tolerance. Defaults to 1e-4.
         max_iter (int, optional): Maximum number of iterations. Defaults to 300.
-        limit (float, optional): Distance limit for creating new clusters. Defaults to 1.
-        x0 (float, optional): Initial value of xi for preventing new clusters. Defaults to 0.001.
+        limit (float, optional): Distance limit for creating new clusters. 
+            Defaults to 1.
+        x0 (float, optional): Initial value of xi for preventing new clusters. 
+            Defaults to 0.001.
         rate (float, optional): Rate of increase of xi. Defaults to 2.0.
 
     """
@@ -56,7 +61,13 @@ class RDPM(BaseEstimator):
         self.custom_initial_centroids = custom_initial_centroids
 
     def diff_alliances(self, d, c) -> int:
-        """Calculates the difference of alliances.
+        """Calculate the difference of alliances.
+
+        Calculates the "friends" and "strangers" for the instance `d` in the 
+        cluster `c`. Friends are instances that are positively constrained with `d`, 
+        and strangers are instances that are negatively constrained with `d`. The 
+        difference is calculated as the number of friends minus the number of strangers
+        in the cluster.
 
         Args:
             d (int): Index of the instance to be predicted.
@@ -76,7 +87,7 @@ class RDPM(BaseEstimator):
         return friends - strangers
 
     def update(self):
-        """Overrides the update method.
+        """Override the update method.
 
         Updates the centroids and considers empty clusters.
         """
@@ -90,7 +101,7 @@ class RDPM(BaseEstimator):
         self._delta = self.calculte_delta(aux)
 
     def _update(self):
-        """Updates the centroids.
+        """Update the centroids.
 
         Updates the centroids of the clusters and marks empty clusters for removal.
 
@@ -126,7 +137,7 @@ class RDPM(BaseEstimator):
         return to_remove
 
     def _delete_centroids(self, to_remove):
-        """Deletes centroids that are empty.
+        """Delete centroids that are empty.
 
         Args:
             to_remove (numpy.ndarray): Array indicating centroids to remove.
@@ -148,7 +159,7 @@ class RDPM(BaseEstimator):
         self.n_clusters = self.centroids.shape[0]
 
     def get_penalties(self, idx: int, iteration: int) -> np.ndarray:
-        """Calculates penalties for assigning an instance to each centroid.
+        """Calculate penalties for assigning an instance to each centroid.
 
         Args:
             idx (int): Index of the instance to be predicted.

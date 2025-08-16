@@ -10,6 +10,28 @@ from ..utils.distance import match_distance
 
 
 class DILS(BaseEstimator):
+    """Dual Intra-cluster Local Search (DILS) clustering algorithm.
+
+    This algorithm do an iterative local search using a dual approach of bes and worst
+    chromosomes. It generate a random mutation in the worst chromosome to explore
+
+    Attributes:
+        n_clusters (int): The number of clusters to form.
+        init (str): Initialization method ('random' or 'custom').
+        distance (callable): Distance metric function.
+        tol (float): Convergence tolerance.
+        custom_initial_centroids (numpy.ndarray, optional): Custom initial centroids.
+        constraints (Sequence[Sequence], optional): Constraints for clustering.
+        probability (float): Probability for crossover.
+        similarity_threshold (float): Threshold for similarity in fitness.
+        mutation_size (int): Size of the mutation segment.
+        local_search_max_iter (int): Maximum iterations for local search.
+        best (numpy.ndarray): Best chromosome found.
+        worst (numpy.ndarray): Worst chromosome found.
+        _fitness (numpy.ndarray): Fitness values of the chromosomes.
+
+    """
+
     def __init__(
         self,
         n_clusters=8,
@@ -45,7 +67,8 @@ class DILS(BaseEstimator):
     def initialize(self):
         """Initialize the chromosomes and their fitness values.
 
-        This method initializes two chromosomes with random cluster assignments and calculates their fitness values.
+        This method initializes two chromosomes with random cluster assignments and 
+        calculates their fitness values.
         """
         cromosomes = np.random.randint(0, self.n_clusters, (2, self.X.shape[0]))
         self._fitness = np.empty(2)
@@ -58,7 +81,8 @@ class DILS(BaseEstimator):
     def _intra_cluster_distance(self, labels):
         """Calculate the intra-cluster distance.
 
-        This method calculates the average distance between all points in the same cluster.
+        This method calculates the average distance between all points in the same 
+        cluster.
 
         Args:
             labels (numpy.ndarray): The labels of the clusters.
@@ -90,7 +114,10 @@ class DILS(BaseEstimator):
         return result / self.n_clusters if self.n_clusters > 0 else 0.0
 
     def ml_infeasability(self, cromosome):
-        """Calculate the infeasibility of the current clustering based on must-link constraints.
+        """Must-link infeasibility.
+        
+        Calculate the infeasibility of the current clustering based on must-link 
+        constraints.
 
         Args:
             cromosome (numpy.ndarray): The current clustering labels.
@@ -108,10 +135,13 @@ class DILS(BaseEstimator):
 
         return (
             infeasability // 2
-        )  # Each must-link constraint is counted twice, once for each element in the pair.
+        )  # Each must-link constraint is counted twice
 
     def cl_infeasability(self, cromosome):
-        """Calculate the infeasibility of the current clustering based on cannot-link constraints.
+        """Cannot-link infeasibility.
+        
+        Calculate the infeasibility of the current clustering based on cannot-link 
+        constraints.
 
         Args:
             cromosome (numpy.ndarray): The current clustering labels.
