@@ -1,12 +1,7 @@
-# Simple workflow for deploying static content to GitHub Pages
+
 name: Deploy static content to Pages
 
 on:
-  # Runs on pushes targeting the default branch
-  push:
-    branches: ["main"]
-
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
@@ -15,8 +10,7 @@ permissions:
   pages: write
   id-token: write
 
-# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
-# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+
 concurrency:
   group: "pages"
   cancel-in-progress: false
@@ -30,31 +24,34 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Setup Python
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: 3.11
+          python-version: 3.12
 
       - name: Install Poetry
         run: |
           curl -sSL https://install.python-poetry.org | python -
           poetry config virtualenvs.create false
 
-      - name: Unit testing
+      - name: Install dependencies
         run: |
-          poetry install
-          mkdocs build
+          poetry install --no-interaction --no-root --with docs
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v3
+      - name: Build documentation
+        run: |
+          mkdocs build --site-dir _site
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v2
+        uses: actions/upload-pages-artifact@v3
         with:
-          # Upload entire repository
-          path: 'site/'
+          path: '_site'
+
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v2
+        uses: actions/deploy-pages@v4
