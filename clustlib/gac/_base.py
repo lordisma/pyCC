@@ -1,15 +1,17 @@
-from clustlib.model import BaseEstimator
 import math
 
 import numpy as np
 from scipy.spatial.distance import pdist
 
+from clustlib.model import BaseEstimator
+
 
 class GeneticClustering(BaseEstimator):
-    """GeneticClustering
+    """GeneticClustering.
 
-    Create the base class for the genetic clustering algorithms. This class will abstract common methods to
-    all genetic algorithms like fitness evaluation, selection, crossover, infeasibility calculation, etc.
+    Create the base class for the genetic clustering algorithms. This class will
+    abstract common methods to all genetic algorithms like fitness evaluation,
+    selection, crossover, infeasibility calculation, etc.
     """
 
     def decode_solution(self, solution):
@@ -43,7 +45,7 @@ class GeneticClustering(BaseEstimator):
                 result += 10.0
                 continue
 
-            pdist_matrix = pdist(self.X[labels == j, :], metric='euclidean')
+            pdist_matrix = pdist(self.X[labels == j, :], metric="euclidean")
             result += pdist_matrix.mean()
 
         return result / self.n_clusters if self.n_clusters > 0 else np.Infinity
@@ -80,7 +82,7 @@ class GeneticClustering(BaseEstimator):
             centroids.append(np.mean(data_from_cluster, axis=0))
 
         return np.array(centroids)
-    
+
     def create_population(self):
         """Create the initial population for the genetic algorithm."""
         self.population = np.random.rand(self._population_size, self._dim)

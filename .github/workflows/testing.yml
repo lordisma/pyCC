@@ -2,12 +2,13 @@ name: "Testing"
 on:
   workflow_dispatch:
   pull_request:
-        branches:
-            - master
-            - main
+    branches:
+      - master
+      - main
+  push:
 
 jobs:
-  unitest:
+  tests:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -16,23 +17,23 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v2
         with:
-          python-version: 3.11
+          python-version: 3.12
 
       - name: Install Poetry
         run: |
           curl -sSL https://install.python-poetry.org | python -
           poetry config virtualenvs.create false
 
-      - name: Unit testing
+      - name: Test with pytest
         run: |
-          poetry install
-          poetry run coverage run -m pytest
-          poetry run coverage xml
-
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v3
+          poetry install --with dev
+          poetry run pytest --cov --junitxml=junit.xml
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
         with:
-          files: ./coverage.xml
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-
+          token: ${{ secrets.CODECOV_TOKEN }}
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}

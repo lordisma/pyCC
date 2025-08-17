@@ -1,5 +1,6 @@
-from .kmean import KMeans
 import numpy as np
+
+from .kmean import KMeans
 
 
 class ElkanKMeans(KMeans):
@@ -15,28 +16,20 @@ class ElkanKMeans(KMeans):
         """Initialize lower and upper bounds for each instance.
 
         This method will calculate the distance to each of the centroids in the cluster.
-        After that, it will assign the closest centroid to each instance and apply the constraints
-        to make sure that the instances respect the limitations.
+        After that, it will assign the closest centroid to each instance and apply the
+        constraints to make sure that the instances respect the limitations.
 
-        In case of conflict, the instance that is closer to the centroid will be kept, and the other
-        will be moved to the next closest centroid.
+        In case of conflict, the instance that is closer to the centroid will be kept,
+        and the other will be moved to the next closest centroid.
 
-        FIXME: This method is not efficient and should be refactored.
+        NOTE: This method applies the constraints in a soft manner. Which means that
+        the instances might be missclassified after the initialization.
 
-        NOTE: This method applies the constraints in a soft manner. Which means that the instances
-        might be missclassified after the initialization.
+        Attributes:
+            dataset (numpy.ndarray): Training instances to cluster.
+            bounds (Tuple[numpy.ndarray, numpy.ndarray]): Lower and Upper bounds for
+                each instance.
 
-        Parameters
-        __________
-        dataset: numpy.ndarray
-            Training instances to cluster.
-
-        Returns
-        _______
-        numpy.ndarray
-            Lower bounds for each instance.
-        numpy.ndarray
-            Upper bounds for each instance.
         """
         self._update_distance()
 
@@ -46,9 +39,7 @@ class ElkanKMeans(KMeans):
         self._labels = np.argmin(self._lower_bounds, axis=1)
 
     def _update(self):
-        """
-        Update the centroids and the bounds for each instance in the dataset
-        """
+        """Update the centroids and the bounds for each instance in the dataset."""
         previous_centroids = self._centroids.copy()
 
         for c in range(self._centroids.shape[0]):
