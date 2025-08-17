@@ -27,8 +27,7 @@ jobs:
       - name: Unit testing
         run: |
           poetry install
-          poetry run coverage run -m pytest
-          poetry run coverage xml
+          poetry run pytest --cov=clustlib --cov-report=xml --cov-branch
 
       - name: Upload coverage reports
         uses: actions/upload-artifact@v4
