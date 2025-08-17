@@ -26,7 +26,8 @@ jobs:
 
       - name: Test with pytest
         run: |
-          pytest --cov --junitxml=junit.xml
+          poetry install --with dev
+          poetry run pytest --cov --junitxml=junit.xml
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
