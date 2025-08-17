@@ -48,6 +48,11 @@ notebook = "^7.4.1"
 plotly = "^6.1.2"
 seaborn = "^0.13.2"
 
+[tool.pytest.ini_options]
+testpaths = [
+    "tests"
+]
+
 [tool.deptry]
 ignore_notebooks = true
 
