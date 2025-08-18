@@ -1,0 +1,17 @@
+changelog:
+  exclude:
+    labels:
+      - chore
+      - workflow
+      - template
+      - test
+  categories:
+    - title: New Features ✨
+      labels:
+        - feature
+    - title: Documentation 📚
+      labels:
+        - docs
+    - title: Bug Fixes 🐛
+      labels:
+        - fix
