@@ -1,0 +1,28 @@
+# Add 'root' label to any root file changes
+# Quotation marks are required for the leading asterisk
+workflow:
+- changed-files:
+  - any-glob-to-any-file:
+    - '.github/workflows/*'
+    - '.github/labeler.yml'
+
+template:
+- changed-files:
+  - any-glob-to-any-file:
+    - '.github/ISSUE_TEMPLATE/*'
+    - '.github/PULL_REQUEST_TEMPLATE.md'
+
+docs:
+- head-branch: ['^docs']
+
+fix:
+- head-branch: ['^fix']
+
+chore:
+- head-branch: ['^chore']
+
+feature:
+- head-branch: ['^feature']
+
+test:
+- head-branch: ['^test']
