@@ -12,6 +12,11 @@
 >
 > Please refer to our [contributing documenation](docs/CONTRIBUTING.md) to know how can you start helping us
 
+> [!WARNING]
+> This Library is a Work in progress at the moment, most use cases may not be contempleted or supported yet. If you find something feel free to create a bug report.
+>
+> In the same way if you think we are missing something important create a feature request
+
 ## What it is?
 
 **Clustlib** is a Python library that provides a unified framework for **constrained clustering algorithms**.
