@@ -11,7 +11,6 @@ coverage:
 
 comment:
   layout: "diff, files"
-  require_changes: true
 
 github_checks:
   annotations: false
