@@ -10,7 +10,7 @@
 > [!NOTE]
 > 🚧 Currently the project is a **Work in progress**, but you can help us to fix it.
 >
-> Please refer to our [contributing documenation](docs/CONTRIBUTING.md) to know how can > you start helping us
+> Please refer to our [contributing documenation](docs/CONTRIBUTING.md) to know how can you start helping us
 
 ## What it is?
 
