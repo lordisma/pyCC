@@ -7,7 +7,7 @@ from scipy.special import digamma as phi
 from scipy.special import gammaln
 from sklearn.preprocessing import normalize
 
-from .. import BaseEstimator
+from clustlib.model import BaseEstimator
 
 logger = logging.getLogger(__name__)
 

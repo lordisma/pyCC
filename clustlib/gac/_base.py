@@ -4,6 +4,9 @@ import numpy as np
 from scipy.spatial.distance import pdist
 
 from clustlib.model import BaseEstimator
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class GeneticClustering(BaseEstimator):
@@ -71,17 +74,13 @@ class GeneticClustering(BaseEstimator):
         return self.decode_solution(best)
 
     def get_centroids(self, labels):
-        centroids = []
+        centroids = np.zeros((self.n_clusters, self.X.shape[1]))
 
-        for label in set(labels):
+        for label in range(self.n_clusters):
             data_from_cluster = self.X[labels == label, :]
+            centroids[label] = np.mean(data_from_cluster, axis=0)
 
-            if data_from_cluster.shape[0] == 0:
-                continue
-
-            centroids.append(np.mean(data_from_cluster, axis=0))
-
-        return np.array(centroids)
+        return centroids
 
     def create_population(self):
         """Create the initial population for the genetic algorithm."""

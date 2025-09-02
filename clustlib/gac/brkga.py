@@ -47,7 +47,6 @@ class BRKGA(GeneticClustering):
         self.init = init
         self.max_iter = max_iter
         self.tol = tol
-        self.centroids = None
         self.constraints = constraints
         self._population_size = population_size
         self._dim = constraints.shape[0]
@@ -75,11 +74,17 @@ class BRKGA(GeneticClustering):
         self.centroids = self.get_centroids(self._labels)
 
     def _convergence(self):
-        if self._delta is None:
-            logger.debug("Delta is None, convergence cannot be checked.")
-            return False
+        """Check convergence based on fitness improvement.
 
-        return np.linalg.norm(self._delta) < self.tol
+        This method will retrun False cause the best member of the population
+        is the one setting the centroids so the convergence is reached early cause
+        the best of the population tends to not change.
+
+        Returns:
+            bool: False to avoid early finish.
+
+        """
+        return False
 
     def _fit(self):
         """Fits the BRKGA model to the given data.
